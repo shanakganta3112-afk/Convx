@@ -155,31 +155,8 @@ fun NavGraphBuilder.navigationBuilder(
         LibraryScreen(navController)
     }
 
-    sharedComposable(Screens.Explore.route) {
-        ExploreScreen(navController = navController)
-    }
-
-    sharedComposable(Screens.Radio.route) {
-        RadioScreen(navController = navController)
-    }
-
-    composable(
-        route = "radio_station/{seedId}?title={title}&artist={artist}&thumbnail={thumbnail}",
-        arguments = listOf(
-            navArgument("seedId") { type = NavType.StringType },
-            navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = null },
-            navArgument("artist") { type = NavType.StringType; nullable = true; defaultValue = null },
-            navArgument("thumbnail") { type = NavType.StringType; nullable = true; defaultValue = null },
-        ),
-    ) { entry ->
-        RadioStationScreen(
-            navController = navController,
-            seedId = entry.arguments?.getString("seedId").orEmpty(),
-            seedTitle = entry.arguments?.getString("title").orEmpty(),
-            seedArtist = entry.arguments?.getString("artist").orEmpty(),
-            seedThumbnail = entry.arguments?.getString("thumbnail").orEmpty(),
-        )
-    }
+    // Explore, Radio and radio stations were the online discovery surfaces. Convx plays
+    // on-device audio only, so their routes are gone along with the screens behind them.
 
     sharedComposable(Screens.Settings.route) {
         SettingsScreen(navController, scrollBehavior)
@@ -211,14 +188,7 @@ fun NavGraphBuilder.navigationBuilder(
         AccountScreen(navController, scrollBehavior)
     }
 
-    sharedComposable("new_release") {
-        NewReleaseScreen(navController, scrollBehavior)
-    }
-
-    sharedComposable("charts_screen") {
-        ChartsScreen(navController)
-    }
-
+    // New releases and charts were YouTube feeds; nothing on device backs them.
     sharedComposable(
         route = "browse/{browseId}",
         arguments = listOf(
@@ -444,22 +414,7 @@ fun NavGraphBuilder.navigationBuilder(
         TopPlaylistScreen(navController, scrollBehavior)
     }
 
-    sharedComposable(
-        route = "youtube_browse/{browseId}?params={params}",
-        arguments = listOf(
-            navArgument("browseId") {
-                type = NavType.StringType
-                nullable = true
-            },
-            navArgument("params") {
-                type = NavType.StringType
-                nullable = true
-            },
-        ),
-    ) {
-        YouTubeBrowseScreen(navController)
-    }
-
+    // youtube_browse was a raw YouTube browse endpoint; there is no on-device equivalent.
     sharedComposable("settings/update") {
        UpdateSettings(navController, scrollBehavior)
     }
