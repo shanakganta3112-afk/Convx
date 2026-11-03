@@ -71,7 +71,6 @@ class App : Application(), SingletonImageLoader.Factory {
     lateinit var applicationScope: CoroutineScope
 
     @Inject
-    lateinit var networkRepository: dagger.Lazy<com.convx.storage.data.NetworkMusicRepository>
 
     override fun onCreate() {
         super.onCreate()
@@ -368,8 +367,6 @@ class App : Application(), SingletonImageLoader.Factory {
                 // Steps YouTube artwork down a size when the requested filename 404s, so
                 // asking for maxresdefault is safe on the videos that do not have one.
                 add(ArtworkQualityInterceptor())
-                // Cover art that lives on an SMB or WebDAV source.
-                add(com.convx.music.utils.NetworkArtworkFetcher.Factory { networkRepository.get() })
             }
             // Reuse decoded images while scrolling.
             memoryCache {

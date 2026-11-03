@@ -329,7 +329,6 @@ class MusicService :
     lateinit var lyricsHelper: LyricsHelper
 
     @Inject
-    lateinit var networkRepository: com.convx.storage.data.NetworkMusicRepository
 
     @Inject
     lateinit var syncUtils: dagger.Lazy<SyncUtils>
@@ -3146,8 +3145,7 @@ class MusicService :
         val errorCode = error.errorCode
         val isDecoderFailure = errorCode in DECODER_FAILURE_CODES
         val isLosslessAudioFailure = errorCode in LOSSLESS_AUDIO_FAILURE_CODES
-        val isLocalMedia = mediaId.startsWith("content://") || mediaId.startsWith("file://") ||
-            mediaId.startsWith(com.convx.storage.domain.NetworkMediaUri.Scheme + "://")
+        val isLocalMedia = mediaId.startsWith("content://") || mediaId.startsWith("file://")
         val isOpus = failedFormat?.sampleMimeType == androidx.media3.common.MimeTypes.AUDIO_OPUS ||
             failedFormat?.codecs?.contains("opus", ignoreCase = true) == true
         val canRetryOpusAsAac = !isLocalMedia &&
@@ -3251,9 +3249,9 @@ class MusicService :
                     CacheDataSource
                         .Factory()
                         .setCache(playerCache)
-                        // SMB / WebDAV songs (convx-network://) are read by the network source;
-                        // every other URI falls through to the normal upstream.
-                        .setUpstreamDataSourceFactory(networkRepository.dataSourceFactory(youtubeUpstreamFactory())),
+                        // Every URI falls through to the normal upstream: there are no
+                        // network sources any more, only the device and its download cache.
+                        .setUpstreamDataSourceFactory(youtubeUpstreamFactory()),
                 ).setCacheWriteDataSinkFactory(null)
                 .setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
         }
@@ -3653,8 +3651,7 @@ class MusicService :
                 // DefaultDataSource handles local URIs without YouTube resolution.
                 if (mediaId.startsWith("content://") ||
                     mediaId.startsWith("file://") ||
-                    mediaId.startsWith("/storage/") ||
-                    mediaId.startsWith(com.convx.storage.domain.NetworkMediaUri.Scheme + "://")
+                    mediaId.startsWith("/storage/")
                 ) {
                     return@Factory dataSpec
                 }
