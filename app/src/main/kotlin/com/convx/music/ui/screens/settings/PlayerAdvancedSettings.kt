@@ -206,12 +206,6 @@ fun PlayerAdvancedSettings(
                             onClick = { navController.navigate("settings/player/local_folders") }
                         ))
                         add(IosSettingsItem(
-                            icon = painterResource(R.drawable.library_music),
-                            title = { Text(stringResource(R.string.network_storage)) },
-                            description = { Text(stringResource(R.string.network_storage_desc)) },
-                            onClick = { navController.navigate("settings/network_storage") }
-                        ))
-                        add(IosSettingsItem(
                             icon = painterResource(R.drawable.history),
                             title = { Text(stringResource(R.string.history_duration)) },
                             description = {

@@ -38,7 +38,6 @@ import androidx.navigation.NavController
 import com.convx.music.ui.component.SymbolIcon
 import com.convx.music.ui.component.sf
 import com.convx.music.ui.screens.library.FolderSymbol
-import com.convx.music.viewmodels.NetworkBrowserViewModel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -223,36 +222,6 @@ internal fun LazyListScope.networkSourcesSection(deps: HomeSectionDeps) {
         NavigationTitle(
             title = stringResource(R.string.network_storage),
             modifier = Modifier.animateItem(),
-        )
-    }
-    item(key = "local_network_sources", contentType = "network_sources") {
-        NetworkSources(deps.navController)
-    }
-}
-
-@Composable
-private fun NetworkSources(navController: NavController, viewModel: NetworkBrowserViewModel = hiltViewModel()) {
-    val servers by viewModel.servers.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxWidth()) {
-        servers.forEachIndexed { index, server ->
-            ListItem(
-                title = server.name,
-                subtitle = server.protocol.name,
-                thumbnailContent = { SymbolIcon(symbol = sf(FolderSymbol), contentDescription = null, size = 28.dp) },
-                shape = listItemShape(index, servers.size + 1),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bounceClick { navController.navigate("network_browse/" + server.id) },
-            )
-        }
-        ListItem(
-            title = stringResource(R.string.network_storage_add),
-            subtitle = "",
-            thumbnailContent = { SymbolIcon(symbol = sf("plus"), contentDescription = null, size = 28.dp) },
-            shape = listItemShape(servers.size, servers.size + 1),
-            modifier = Modifier
-                .fillMaxWidth()
-                .bounceClick { navController.navigate("settings/network_storage") },
         )
     }
 }

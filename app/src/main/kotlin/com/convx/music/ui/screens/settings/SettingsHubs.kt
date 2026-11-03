@@ -200,7 +200,6 @@ object SettingsHubs {
                 listOf(
                     SettingsLink("Music folders", R.drawable.music_note, { systemOrange }, route("settings/player/local_folders"), "Choose folders to scan", "local files"),
                     SettingsLink("Scan local files", R.drawable.search, { systemGreen }, route("settings/scan_music"), "Find songs on this device"),
-                    SettingsLink("Network storage", R.drawable.storage, { systemGray }, route("settings/network_storage"), "SMB and WebDAV shares", "smb webdav nas"),
                 ),
             ),
             SettingsLinkGroup(

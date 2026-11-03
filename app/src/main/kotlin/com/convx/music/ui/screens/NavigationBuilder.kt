@@ -533,16 +533,8 @@ fun NavGraphBuilder.navigationBuilder(
         com.convx.music.ui.screens.JamScreen(navController)
     }
 
-    sharedComposable(
-        route = "network_browse/{serverId}",
-        arguments = listOf(navArgument("serverId") { type = NavType.StringType }),
-    ) {
-        com.convx.music.ui.screens.library.NetworkBrowserScreen(navController, it.arguments?.getString("serverId").orEmpty())
-    }
-
-    sharedComposable("settings/network_storage") {
-        com.convx.music.ui.screens.settings.NetworkStorageSettingsScreen(navController, scrollBehavior)
-    }
+    // SMB/WebDAV browsing is gone with the network-storage module: Convx reads the
+    // device's own storage only.
 
     sharedComposable("settings/storage") {
         StorageSettings(navController, scrollBehavior)

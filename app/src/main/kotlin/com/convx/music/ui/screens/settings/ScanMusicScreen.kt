@@ -133,11 +133,6 @@ fun ScanMusicScreen(
                     Text(stringResource(R.string.excluded_folders))
                 }
 
-                Button(
-                    onClick = { navController.navigate("settings/network_storage") },
-                ) {
-                    Text(stringResource(R.string.network_storage))
-                }
             }
         }
 

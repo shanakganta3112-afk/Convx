@@ -65,7 +65,6 @@ fun getAllSearchableSettings(): List<SearchableSetting> {
         SearchableSetting("AI translation", "Choose a translation provider, model and target language", "Library & content", "settings/ai", keywords = "lyrics translate translation language api model key"),
         SearchableSetting("Scan local music", "Find and refresh songs stored on this device", "Library & content", "settings/scan_music", keywords = "scan rescan refresh index local files songs"),
         SearchableSetting("Music folders", "Choose local folders to scan and browse", "Library & content", "settings/player/local_folders", keywords = "folder directory local storage device"),
-        SearchableSetting("Network storage", "Browse SMB and WebDAV music shares", "Library & content", "settings/network_storage", keywords = "smb webdav nas network folder server share"),
         SearchableSetting(stringResource(R.string.hide_explicit), null, "Library & content", "settings/content"),
         SearchableSetting(stringResource(R.string.hide_video_songs), null, "Library & content", "settings/content"),
         SearchableSetting(stringResource(R.string.data_saver_mode), null, "Library & content", "settings/content"),
