@@ -32,7 +32,7 @@ import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.constants.HideYoutubeShortsKey
 import com.convx.music.constants.LibraryFilter
-import com.convx.music.constants.LocalOnlyModeKey
+import com.convx.music.constants.LocalOnlyMode
 import com.convx.music.constants.PlaylistSortDescendingKey
 import com.convx.music.constants.PlaylistSortType
 import com.convx.music.constants.PlaylistSortTypeKey
@@ -129,8 +129,8 @@ constructor(
         context.dataStore.data
             .map { preferences ->
                 SongLibraryOptions(
-                    // Keep the saved filter so it returns when local-only mode is turned off.
-                    filter = if (preferences[LocalOnlyModeKey] == true) SongFilter.LOCAL
+                    // Convx is an on-device player, so the library filter is always local.
+                    filter = if (LocalOnlyMode) SongFilter.LOCAL
                     else preferences[SongFilterKey].toEnum(SongFilter.LIKED),
                     sortType = preferences[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
                     descending = preferences[SongSortDescendingKey] ?: true,
@@ -231,7 +231,7 @@ constructor(
         context.dataStore.data
             .map {
                 Triple(
-                    if (it[LocalOnlyModeKey] == true) ArtistFilter.LOCAL
+                    if (LocalOnlyMode) ArtistFilter.LOCAL
                     else it[ArtistFilterKey].toEnum(ArtistFilter.LIKED),
                     it[ArtistSortTypeKey].toEnum(ArtistSortType.CREATE_DATE),
                     it[ArtistSortDescendingKey] ?: true,
@@ -287,8 +287,8 @@ constructor(
         context.dataStore.data
             .map { preferences ->
                 AlbumLibraryOptions(
-                    // Keep the saved filter so it returns when local-only mode is turned off.
-                    filter = if (preferences[LocalOnlyModeKey] == true) AlbumFilter.LOCAL
+                    // Convx is an on-device player, so the library filter is always local.
+                    filter = if (LocalOnlyMode) AlbumFilter.LOCAL
                     else preferences[AlbumFilterKey].toEnum(AlbumFilter.LIKED),
                     sortType = preferences[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE),
                     descending = preferences[AlbumSortDescendingKey] ?: true,
@@ -362,7 +362,7 @@ constructor(
                     sortType = preferences[PlaylistSortTypeKey].toEnum(PlaylistSortType.CREATE_DATE),
                     descending = preferences[PlaylistSortDescendingKey] ?: true,
                     hideYoutubeShorts = preferences[HideYoutubeShortsKey] ?: false,
-                    localOnly = preferences[LocalOnlyModeKey] == true,
+                    localOnly = LocalOnlyMode,
                 )
             }.distinctUntilChanged()
             .flatMapLatest { options ->
@@ -443,7 +443,7 @@ constructor(
     // The mixed Library view is built from liked/bookmarked YouTube rows; in
     // local-only mode the same three shelves read the on-device library instead.
     private val localOnly = context.dataStore.data
-        .map { it[LocalOnlyModeKey] == true }
+        .map { LocalOnlyMode }
         .distinctUntilChanged()
 
     var artists = localOnly
@@ -452,7 +452,7 @@ constructor(
             else database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var albums = context.dataStore.data
-        .map { (it[HideExplicitKey] ?: false) to (it[LocalOnlyModeKey] == true) }
+        .map { (it[HideExplicitKey] ?: false) to LocalOnlyMode }
         .distinctUntilChanged()
         .flatMapLatest { (hideExplicit, local) ->
             val source = if (local) database.albumsLocal(AlbumSortType.NAME, false)
@@ -460,7 +460,7 @@ constructor(
             source.map { it.filterExplicitAlbums(hideExplicit) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var playlists = context.dataStore.data
-        .map { (it[HideYoutubeShortsKey] ?: false) to (it[LocalOnlyModeKey] == true) }
+        .map { (it[HideYoutubeShortsKey] ?: false) to LocalOnlyMode }
         .distinctUntilChanged()
         .flatMapLatest { (hideYoutubeShorts, local) ->
             database.playlists(PlaylistSortType.CREATE_DATE, true).map { playlists ->

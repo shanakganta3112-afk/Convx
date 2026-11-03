@@ -76,7 +76,6 @@ import com.convx.music.ui.ios.compat.Text
 import com.convx.music.ui.ios.foundation.IosTheme
 import com.convx.music.ui.ios.foundation.iosRowPress
 import com.convx.music.ui.ios.foundation.IosMetrics
-import com.convx.music.constants.LocalOnlyModeKey
 import com.convx.music.utils.rememberPreference
 import com.convx.music.ui.ios.compat.Icon
 import com.convx.music.ui.ios.compat.Switch
@@ -142,10 +141,8 @@ fun SettingsScreen(
                 item("profile") {
                     ProfileCard(accountName, accountImageUrl) { navController.navigate("settings/account") }
                 }
-                if (query.isBlank()) item("localOnly") {
-                    Spacer(Modifier.height(20.dp))
-                    LocalOnlyRow()
-                }
+                // The local-only switch is gone: Convx no longer has an online mode to
+                // switch back to.
                 if (query.isBlank()) {
                     rootGroups.forEachIndexed { i, links ->
                         item("group$i") {
@@ -263,39 +260,6 @@ private fun SearchResults(entries: List<SearchEntry>, query: String, onAction: (
         links = hits.map { it.link.copy(subtitle = it.category + (it.link.subtitle?.let { s -> " · $s" } ?: "")) },
         onAction = onAction,
     )
-}
-
-/** Local only mode: a root-level switch, so it is one tap from the top of Settings. */
-@Composable
-private fun LocalOnlyRow() {
-    val (localOnly, setLocalOnly) = rememberPreference(LocalOnlyModeKey, defaultValue = false)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(ContinuousRoundedRectangle(IosMetrics.GroupedCornerRadius))
-            .background(IosTheme.colors.secondarySystemGroupedBackground)
-            .clickable { setLocalOnly(!localOnly) }
-            .defaultMinSize(minHeight = 56.dp)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(30.dp).clip(ContinuousRoundedRectangle(7.dp)).background(IosTheme.colors.systemOrange),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(painterResource(R.drawable.music_note), null, tint = Color.White, modifier = Modifier.size(18.dp))
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.local_only_mode), style = IosTheme.typography.body, color = IosTheme.colors.label)
-            Text(
-                stringResource(R.string.local_only_mode_desc),
-                style = IosTheme.typography.footnote,
-                color = IosTheme.colors.secondaryLabel,
-            )
-        }
-        Switch(checked = localOnly, onCheckedChange = setLocalOnly)
-    }
 }
 
 @Composable

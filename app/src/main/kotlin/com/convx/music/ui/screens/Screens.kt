@@ -97,10 +97,10 @@ sealed class Screens(
         val MainScreens: List<Screens> by lazy { listOf(Home, Search, Radio, Library) }
 
         /**
-         * Local-only mode promotes [Songs] and omits online destinations.
+         * Convx is an on-device player, so the tab set is the local one, always. [Songs] is
+         * promoted: without a stream, "all songs" is the only meaning the list can have.
          */
-        fun mainScreens(localOnly: Boolean): List<Screens> =
-            if (localOnly) listOf(Home, Songs, Search, Library) else MainScreens
+        fun mainScreens(): List<Screens> = listOf(Home, Songs, Search, Library)
 
         /** Every route that counts as a tab root, in either mode. */
         val MainRoutes: Set<String> by lazy { (MainScreens + Songs).map { it.route }.toSet() }

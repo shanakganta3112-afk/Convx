@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
-import com.convx.music.constants.LocalOnlyModeKey
+import com.convx.music.constants.LocalOnlyMode
 import com.convx.music.db.MusicDatabase
 import com.convx.music.db.entities.Album
 import com.convx.music.db.entities.Artist
@@ -80,7 +80,7 @@ constructor(
             query,
             filter,
             context.dataStore.data.map {
-                ((it[HideVideoSongsKey] ?: false) || (it[DataSaverEnabledKey] ?: false)) to (it[LocalOnlyModeKey] == true)
+                ((it[HideVideoSongsKey] ?: false) || (it[DataSaverEnabledKey] ?: false)) to LocalOnlyMode
             }.distinctUntilChanged()
         ) { query, filter, preferences ->
             Triple(query, filter, preferences)

@@ -19,7 +19,7 @@ import com.convx.music.constants.SongSortTypeKey
 import com.convx.music.constants.SongSortDescendingKey
 import com.convx.music.extensions.toEnum
 import com.convx.music.constants.PlaylistSortType
-import com.convx.music.constants.LocalOnlyModeKey
+import com.convx.music.constants.LocalOnlyMode
 import com.convx.music.db.MusicDatabase
 import com.convx.music.db.entities.LocalItem
 import com.convx.music.db.entities.Playlist
@@ -52,7 +52,7 @@ class AppleLibraryViewModel @Inject constructor(
 
     /** Local-only mode: device items only. Otherwise the whole library, online items included. */
     val localOnly: StateFlow<Boolean> = context.dataStore.data
-        .map { it[LocalOnlyModeKey] ?: false }
+        .map { LocalOnlyMode }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
@@ -61,7 +61,7 @@ class AppleLibraryViewModel @Inject constructor(
     }
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val localAlbums = context.dataStore.data
-        .map { Triple(it[AlbumSortTypeKey].toEnum(AlbumSortType.NAME), it[AlbumSortDescendingKey] ?: false, it[LocalOnlyModeKey] ?: false) }
+        .map { Triple(it[AlbumSortTypeKey].toEnum(AlbumSortType.NAME), it[AlbumSortDescendingKey] ?: false, LocalOnlyMode) }
         .distinctUntilChanged()
         .flatMapLatest { (sort, descending, local) ->
             if (local) database.albumsLocal(sort, descending) else database.albums(sort, descending)
@@ -70,7 +70,7 @@ class AppleLibraryViewModel @Inject constructor(
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val localArtists = context.dataStore.data
-        .map { Triple(it[ArtistSortTypeKey].toEnum(ArtistSortType.NAME), it[ArtistSortDescendingKey] ?: false, it[LocalOnlyModeKey] ?: false) }
+        .map { Triple(it[ArtistSortTypeKey].toEnum(ArtistSortType.NAME), it[ArtistSortDescendingKey] ?: false, LocalOnlyMode) }
         .distinctUntilChanged()
         .flatMapLatest { (sort, descending, local) ->
             if (local) database.artistsLocal(sort, descending) else database.artists(sort, descending)
@@ -79,7 +79,7 @@ class AppleLibraryViewModel @Inject constructor(
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val localSongs = context.dataStore.data
-        .map { Triple(it[SongSortTypeKey].toEnum(SongSortType.NAME), it[SongSortDescendingKey] ?: false, it[LocalOnlyModeKey] ?: false) }
+        .map { Triple(it[SongSortTypeKey].toEnum(SongSortType.NAME), it[SongSortDescendingKey] ?: false, LocalOnlyMode) }
         .distinctUntilChanged()
         .flatMapLatest { (sort, descending, local) ->
             if (local) database.localSongs(sort, descending) else database.songs(sort, descending)

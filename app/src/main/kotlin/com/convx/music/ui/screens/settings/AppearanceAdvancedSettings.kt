@@ -133,9 +133,8 @@ fun AppearanceAdvancedSettings(
     val hiddenTabs = remember(hiddenNavigationRoutes) {
         hiddenNavigationRoutes.lineSequence().map(String::trim).filter(String::isNotEmpty).toSet()
     }
-    val (localOnlyMode) = rememberPreference(com.convx.music.constants.LocalOnlyModeKey, false)
-    val optionalTabs = Screens.mainScreens(localOnlyMode).filter { it != Screens.Search } +
-        if (localOnlyMode) emptyList() else listOf(Screens.Explore)
+    // Convx is an on-device player: the optional tab list is fixed and Explore is gone.
+    val optionalTabs = Screens.mainScreens().filter { it != Screens.Search }
     val onTabVisibilityChange: (Screens, Boolean) -> Unit = { tab, visible ->
         val updated = if (visible) hiddenTabs - tab.route else hiddenTabs + tab.route
         onHiddenNavigationRoutesChange(updated.sorted().joinToString("\n"))

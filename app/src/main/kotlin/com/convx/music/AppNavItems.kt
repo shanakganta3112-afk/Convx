@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import com.convx.music.constants.ListenTogetherInTopBarKey
-import com.convx.music.constants.LocalOnlyModeKey
+import com.convx.music.constants.LocalOnlyMode
 import com.convx.music.constants.HiddenNavigationRoutesKey
 import com.convx.music.ui.screens.Screens
 import com.convx.music.utils.rememberPreference
@@ -29,14 +29,13 @@ class AppNavItems(
 @Composable
 fun rememberAppNavItems(): AppNavItems {
     val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
-    // Read once here because both navigation bars use this preference.
-    val (localOnlyMode) = rememberPreference(LocalOnlyModeKey, false)
     val (hiddenNavigationRoutes) = rememberPreference(HiddenNavigationRoutesKey, "")
     val hiddenRoutes = remember(hiddenNavigationRoutes) {
         hiddenNavigationRoutes.lineSequence().map(String::trim).filter(String::isNotEmpty).toSet()
     }
-    val navigationItems = remember(listenTogetherInTopBar, localOnlyMode, hiddenRoutes) {
-        val screens = Screens.mainScreens(localOnlyMode)
+    // Convx is an on-device player, so the tab set no longer varies by mode.
+    val navigationItems = remember(listenTogetherInTopBar, hiddenRoutes) {
+        val screens = Screens.mainScreens()
         val visible = if (listenTogetherInTopBar) {
             screens.filter { it != Screens.ListenTogether }
         } else {
@@ -44,11 +43,13 @@ fun rememberAppNavItems(): AppNavItems {
         }
         visible.filter { it == Screens.Search || it.route !in hiddenRoutes }
     }
-    // Explore is only shown in the floating navigation bar, and is online-only.
-    val floatingNavigationItems = remember(navigationItems, localOnlyMode, hiddenRoutes) {
-        if (localOnlyMode || Screens.Explore.route in hiddenRoutes) navigationItems else navigationItems + Screens.Explore
-    }
-    return remember(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems) {
-        AppNavItems(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems)
+    // Explore (the online discovery tab) is gone, so both bars carry the same items.
+    return remember(listenTogetherInTopBar, navigationItems) {
+        AppNavItems(
+            listenTogetherInTopBar = listenTogetherInTopBar,
+            localOnlyMode = LocalOnlyMode,
+            navigationItems = navigationItems,
+            floatingNavigationItems = navigationItems,
+        )
     }
 }

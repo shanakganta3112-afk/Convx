@@ -34,22 +34,18 @@ internal fun navTabContextMenu(
     )
 
     val items = when (screen) {
+        // Every entry that needed a server is gone: Listen Together, the Google account,
+        // and Search's four discovery shortcuts (explore, charts, new releases, moods).
+        // History and stats are read from the on-device database.
         Screens.Home -> listOf(
             item(R.string.history, "history"),
             item(R.string.stats, "stats"),
-            item(R.string.together, Screens.ListenTogether.route),
         )
         Screens.Library -> listOf(
             item(R.string.history, "history"),
             item(R.string.stats, "stats"),
-            item(R.string.account, "account"),
         )
-        Screens.Search -> listOf(
-            item(R.string.tab_explore, Screens.Explore.route),
-            item(R.string.charts, "charts_screen"),
-            item(R.string.new_release_albums, "new_release"),
-            item(R.string.mood_and_genres, "mood_and_genres"),
-        )
+        Screens.Search -> emptyList()
         else -> emptyList()
     }
     return if (items.isEmpty()) emptyList() else listOf(IosMenuSection(items))

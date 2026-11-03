@@ -162,7 +162,21 @@ val AppleArtworkKey = booleanPreferencesKey("appleArtwork")
  * Year comes from the file's own tag via MediaStore; untagged albums sort last.
  */
 val LocalAlbumsByYearKey = booleanPreferencesKey("localAlbumsByYear")
-/** Switches Home, Library, and Search to the on-device music library. */
+
+/**
+ * Convx plays on-device audio only.
+ *
+ * Every surface reads this constant instead of a preference, so the app cannot be flipped
+ * back into the streaming UI by a stored value or a stray write. It is deliberately a
+ * named constant rather than a deleted branch: `grep -rn "LocalOnlyMode"` lists every
+ * online branch still to be removed, and the read sites keep their shape until then.
+ */
+const val LocalOnlyMode = true
+
+/**
+ * Legacy key. No longer read — an existing install's stored value is ignored rather than
+ * migrated. Do not add a read of this; use [LocalOnlyMode].
+ */
 val LocalOnlyModeKey = booleanPreferencesKey("localOnlyMode")
 /** Newline-separated folder paths excluded from local scanning. */
 val LocalExcludedFoldersKey = stringPreferencesKey("localExcludedFolders")

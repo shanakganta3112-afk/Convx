@@ -3732,23 +3732,19 @@ class MusicService :
                         val mediaId = mediaItem.mediaId
                         if (mediaId.startsWith("content://") || mediaId.startsWith("file://") ||
                             mediaId.startsWith("/storage/")) return@ResolvingMediaSource progressive.createMediaSource(mediaItem)
-                        val key = effectiveCacheKey(mediaId)
-                        if (!bypassCacheForQualityChange.contains(mediaId) &&
-                            (downloadCache.isCached(downloadKey(mediaId), 0, 1) || playerCache.isCached(key, 0, CHUNK_LENGTH))) {
+                        // Audio already downloaded to disk still plays: it is a local file in
+                        // the download cache, not a stream.
+                        if (downloadCache.isCached(downloadKey(mediaId), 0, 1)) {
                             return@ResolvingMediaSource progressive.createMediaSource(mediaItem)
                         }
-                        val cached = songUrlCache[key]?.takeIf { it.second > System.currentTimeMillis() }
-                            ?.takeUnless { bypassCacheForQualityChange.contains(mediaId) }
-                        val resolved = cached?.let {
-                            ResolvedStream(it.first.toUri(), directFile = false,
-                                hls = key in hlsStreamKeys || it.first.substringBefore('?').endsWith(".m3u8", true))
-                        } ?: fetchResolvedStream(mediaId, key)
-                        if (resolved.hls) {
-                            adaptive.createMediaSource(mediaItem.buildUpon().setUri(resolved.uri)
-                                .setCustomCacheKey(null).setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8).build())
-                        } else {
-                            progressive.createMediaSource(mediaItem)
-                        }
+                        // Anything left is a stream request. Convx is an on-device player, so
+                        // there is no source for it any more: fail fast instead of resolving a
+                        // URL over the network. ResolvingMediaSource wraps this into an
+                        // IOException carrying the message, which PlaybackErrorClassifier
+                        // surfaces to the user.
+                        throw java.io.IOException(
+                            "Convx plays on-device audio only; $mediaId is neither a file nor downloaded"
+                        )
                     }
             }
         }
