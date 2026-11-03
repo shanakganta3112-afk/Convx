@@ -351,11 +351,9 @@ dependencies {
 
     implementation(project(":innertube"))
     implementation(project(":lyrics"))
-    implementation(project(":integrations"))
     implementation(project(":spotify"))
     implementation(project(":artwork"))
     implementation(project(":network-storage"))
-    implementation(project(":canvas"))
     implementation(project(":spine"))
     implementation(project(":hig"))
 
