@@ -7,7 +7,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
-        maven { setUrl("https://maven.aliyun.com/repository/public") }
     }
 }
 
@@ -17,10 +16,8 @@ plugins {
 
 rootProject.name = "convx"
 include(":app")
-include(":canvas")
 include(":innertube")
 include(":lyrics")
-include(":integrations")
 include(":spotify")
 include(":artwork")
 include(":network-storage")
