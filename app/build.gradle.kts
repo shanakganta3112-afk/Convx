@@ -349,12 +349,14 @@ dependencies {
     implementation(libs.jsoup)
     ksp(libs.hilt.compiler)
 
+    implementation(project(":integrations"))
     implementation(project(":innertube"))
     implementation(project(":lyrics"))
     implementation(project(":spotify"))
     implementation(project(":artwork"))
     implementation(project(":spine"))
     implementation(project(":hig"))
+    implementation(project(":canvas"))
 
 
     implementation(libs.ktor.client.core)

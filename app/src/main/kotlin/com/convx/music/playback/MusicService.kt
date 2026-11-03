@@ -329,8 +329,6 @@ class MusicService :
     lateinit var lyricsHelper: LyricsHelper
 
     @Inject
-
-    @Inject
     lateinit var syncUtils: dagger.Lazy<SyncUtils>
 
     @Inject

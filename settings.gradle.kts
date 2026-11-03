@@ -16,6 +16,8 @@ plugins {
 
 rootProject.name = "convx"
 include(":app")
+include(":canvas")
+include(":integrations")
 include(":innertube")
 include(":lyrics")
 include(":spotify")

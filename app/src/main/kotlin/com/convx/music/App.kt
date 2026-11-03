@@ -70,8 +70,6 @@ class App : Application(), SingletonImageLoader.Factory {
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
-    @Inject
-
     override fun onCreate() {
         super.onCreate()
         com.music.spotify.SpotifyAuth.initialize(this)
