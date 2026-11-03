@@ -37,7 +37,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.convx.music.ui.component.SymbolIcon
 import com.convx.music.ui.component.sf
-import com.convx.music.ui.screens.library.FolderSymbol
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
