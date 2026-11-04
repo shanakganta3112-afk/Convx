@@ -24,6 +24,7 @@ include(":spotify")
 include(":artwork")
 include(":spine")
 include(":hig")
+include(":liquid-glass")
 
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.

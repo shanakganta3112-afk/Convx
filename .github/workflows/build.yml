@@ -52,7 +52,7 @@ jobs:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
         run: |
-          ./gradlew assembleUniversalGmsDebug --no-configuration-cache --console=plain --warning-mode summary
+          ./gradlew assembleUniversalGmsDebug :liquid-glass:assembleDebug --no-configuration-cache --console=plain --warning-mode summary
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
