@@ -37,32 +37,17 @@ import timber.log.Timber
 )
 @Composable
 fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerConnection?) {
-    val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
+    // Default off: "off" now means "express no preference and let the system decide", which
+    // on One UI hands control to Motion Smoothness / adaptive refresh — high while touching,
+    // 60 when idle. Pinning the fastest mode made the display sit at 120Hz even on a static
+    // list, which is pure waste on a mid-range panel that only offers 60 and 120.
+    val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = false)
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        if (!getAutoUpdateCheckSetting(context)) return@LaunchedEffect
-
-        delay(2000L.milliseconds)
-        checkForUpdate(
-            context = context,
-            onSuccess = { latestVersion, isAvailable, _, _, _, _, _, _ ->
-                val currentVersion = BuildConfig.VERSION_NAME
-                Timber.tag("UpdateCheck").d("Startup check success. Latest: $latestVersion, Current: $currentVersion, isAvailable: $isAvailable")
-                saveUpdateAvailableState(context, isAvailable)
-
-                if (isAvailable && getUpdateNotificationsSetting(context) && getLastNotifiedUpdateTag() != latestVersion) {
-                    saveLastNotifiedUpdateTag(latestVersion)
-                    Timber.tag("UpdateCheck").d("Posting update notification for $latestVersion")
-                    UpdateNotificationHelper.showUpdateNotification(context, latestVersion)
-                }
-            },
-            onError = {
-                Timber.tag("UpdateCheck").e("Startup check failed")
-                // Preserve the last known update state when the check fails offline.
-            },
-        )
-    }
+    // The startup update check is gone. Convx plays on-device audio only, so a network
+    // request two seconds after every cold start was the one remaining thing the app did
+    // online without being asked. Checking for updates is now a deliberate action from
+    // Settings, not something that happens on launch.
 
     LaunchedEffect(enableHighRefreshRate) {
         val window = activity.window
@@ -81,12 +66,10 @@ fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerCo
                     .maxByOrNull { it.refreshRate }
                 layoutParams.preferredDisplayModeId = fastest?.modeId ?: 0
             } else {
-                val mode60 = modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
-                    ?: modes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
-
-                if (mode60 != null) {
-                    layoutParams.preferredDisplayModeId = mode60.modeId
-                }
+                // Zero means "no preference". The platform's own frame-rate arbitration and
+                // the vendor's adaptive refresh then decide, which is both smoother during
+                // interaction and cheaper when the screen is still.
+                layoutParams.preferredDisplayModeId = 0
             }
             window.attributes = layoutParams
         } else {
@@ -97,7 +80,8 @@ fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerCo
                     .maxOrNull()
                     ?: 0f
             } else {
-                60f
+                // No preference: let the system and the vendor's adaptive refresh decide.
+                0f
             }
             window.attributes = params
         }

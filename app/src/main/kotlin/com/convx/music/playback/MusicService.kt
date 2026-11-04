@@ -1407,7 +1407,10 @@ class MusicService :
                     .build()
             )
             .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_NETWORK)
+            // Local files only, so there is nothing for a network wake lock (and the Wi-Fi
+            // lock it implies) to keep alive. WAKE_MODE_LOCAL keeps the CPU awake for
+            // playback and drops the rest.
+            .setWakeMode(C.WAKE_MODE_LOCAL)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
