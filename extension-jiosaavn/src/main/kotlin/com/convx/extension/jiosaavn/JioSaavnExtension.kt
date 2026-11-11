@@ -53,7 +53,7 @@ class JioSaavnExtension(
 
     override suspend fun album(albumId: String): ExtensionAlbumPage {
         val response = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.album(albumId))
-        val album = parser.album(response)
+        val album = parser.album(response, fallbackId = albumId)
             ?: throw ExtensionException("JioSaavn album $albumId not found")
         // Observed clients read the track list from "songs"; "list" is accepted too
         // because the playlist shape uses it.
@@ -62,7 +62,7 @@ class JioSaavnExtension(
 
     override suspend fun artist(artistId: String): ExtensionArtistPage {
         val response = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.artist(artistId))
-        val artist = parser.artist(response)
+        val artist = parser.artist(response, fallbackId = artistId)
             ?: throw ExtensionException("JioSaavn artist $artistId not found")
         return ExtensionArtistPage(
             artist = artist,
@@ -73,7 +73,7 @@ class JioSaavnExtension(
 
     override suspend fun playlist(playlistId: String): ExtensionPlaylistPage {
         val response = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.playlist(playlistId))
-        val playlist = parser.playlist(response)
+        val playlist = parser.playlist(response, fallbackId = playlistId)
             ?: throw ExtensionException("JioSaavn playlist $playlistId not found")
         return ExtensionPlaylistPage(
             playlist = playlist,

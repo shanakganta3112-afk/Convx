@@ -60,7 +60,11 @@ class SaavnLiveProbeTest {
         println("PROBE|ids|song=$songId album=$albumId artist=$artistId playlist=$playlistId")
 
         if (songId != null) dump("song.getDetails", api.call(SaavnCalls.SONG_DETAILS, SaavnCalls.song(songId)))
-        if (albumId != null) dump("webapi.get album", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.album(albumId)))
+        if (albumId != null) {
+            val albumResponse = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.album(albumId))
+            println("PROBE|album detail|raw id=${albumResponse["id"]} requested=$albumId")
+            dump("webapi.get album", albumResponse)
+        }
         if (artistId != null) dump("webapi.get artist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.artist(artistId)))
         if (playlistId != null) dump("webapi.get playlist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.playlist(playlistId)))
 

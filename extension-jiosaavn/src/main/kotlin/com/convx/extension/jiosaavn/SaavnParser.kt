@@ -58,8 +58,12 @@ class SaavnParser {
         )
     }
 
-    fun album(obj: JsonObject): ExtensionAlbum? {
-        val id = stringOf(obj, "id")?.takeIf { it.isNotBlank() } ?: return null
+    /**
+     * @param fallbackId the id that was requested. Detail payloads carry `id` sometimes
+     * empty or null, and the caller already knows which album it asked for.
+     */
+    fun album(obj: JsonObject, fallbackId: String? = null): ExtensionAlbum? {
+        val id = (stringOf(obj, "id")?.takeIf { it.isNotBlank() } ?: fallbackId) ?: return null
         val moreInfo = moreInfo(obj)
         return ExtensionAlbum(
             id = id,
@@ -74,8 +78,10 @@ class SaavnParser {
         )
     }
 
-    fun artist(obj: JsonObject): ExtensionArtist? {
-        val id = (stringOf(obj, "id") ?: stringOf(obj, "artistId"))?.takeIf { it.isNotBlank() }
+    fun artist(obj: JsonObject, fallbackId: String? = null): ExtensionArtist? {
+        val id = (stringOf(obj, "id") ?: stringOf(obj, "artistId"))
+            ?.takeIf { it.isNotBlank() }
+            ?: fallbackId
             ?: return null
         return ExtensionArtist(
             id = id,
@@ -85,8 +91,8 @@ class SaavnParser {
         )
     }
 
-    fun playlist(obj: JsonObject): ExtensionPlaylist? {
-        val id = stringOf(obj, "id")?.takeIf { it.isNotBlank() } ?: return null
+    fun playlist(obj: JsonObject, fallbackId: String? = null): ExtensionPlaylist? {
+        val id = (stringOf(obj, "id")?.takeIf { it.isNotBlank() } ?: fallbackId) ?: return null
         val moreInfo = moreInfo(obj)
         val owner = listOfNotNull(
             stringOf(moreInfo ?: JsonObject(emptyMap()), "firstname"),
