@@ -113,7 +113,33 @@ Capability is still expressed by interface implementation, as in Echo — the ap
 `client as? AlbumClient` rather than reading a flag. That keeps a second extension
 (e.g. a YouTube one) addable without touching the host.
 
-### 4.3 JioSaavn HTTP contract (observed)
+### 4.3 JioSaavn HTTP contract (captured from CI)
+
+> Captured on 2026-11-11 by `SaavnLiveProbeTest`, run from the "CI & Debug Build"
+> workflow with `probe_saavn: true` (the sandbox this spec was written in cannot reach
+> jiosaavn.com; GitHub runners can). Everything below is response data, not inference.
+
+Captured facts that changed the implementation:
+
+- `search.getResults` → `{results, start, total}`; items carry `id, title, image,
+  subtitle, perma_url, language, play_count, explicit_content, more_info{...}`.
+- `search.getAlbumResults` → `results`; items carry `id, title, image, year,
+  more_info{artistMap, song_count, text, query}` — `song_count` is inside `more_info`,
+  not at the root.
+- `search.getArtistResults` → `results`; items carry `id, name, image, role, perma_url`.
+- `search.getPlaylistResults` → `results`; items carry `id, title, image, numsongs,
+  more_info{firstname, lastname, song_count, ...}`.
+- **Song detail is `song.getDetails` with `pids=<id>` and `ctx=android`.** The
+  `webapi.get type=song` form answers `{"results": []}` for a search-result id, so it
+  cannot be used for streaming. The response is keyed by song id (`{<id>: {...}}`).
+- `webapi.get type=album` / `type=playlist` return the object at the root with the track
+  list in `list`; `webapi.get type=artist` returns `artistId, name, image, topSongs,
+  topAlbums, ...` at the root.
+- **Detail payloads carry an empty `id` (and, in this API version, an empty `title`).**
+  Verified: `raw id=""` for the requested album. Parsers therefore accept the requested
+  id as a fallback instead of rejecting the payload.
+
+### 4.3a Calls used
 
 Base: `https://www.jiosaavn.com/api.php`, GET, every call is `?__call=<name>` plus
 query parameters. Common parameters added by the client (`BaseApi.kt` in the Saavn
@@ -201,26 +227,25 @@ the prefix, the builders and the parsers; nothing else hardcodes `"saavn:"`.
 
 ## 5. Open questions / not determined
 
-1. **`webapi.get type=artist` payload shape.** The Saavn extension requests
-   `n_song`/`n_album` and reads `topSongs`/`topAlbums`, which implies one call returns
-   both. I could not verify the exact key names against the live API (egress to
-   `jiosaavn.com` is blocked in this environment), so the artist parser reads both
-   `topSongs`/`songs` and `topAlbums`/`albums` and tolerates either.
-2. **`webapi.get type=album` song container.** Observed clients read `songs`; Convx's
-   own `SaavnService` reads `songs` for the song case. The album parser accepts
-   `songs` or `list`.
-3. **Pagination semantics.** `p` appears to be 1-based for search but the artist
-   extension passes `(page - 1)`, i.e. 0-based for `webapi.get`. Not resolved; the
-   extension does not paginate in this pass (search returns the first page only), so
-   the inconsistency cannot bite yet.
-4. **Rate limiting / geo-blocking of `api.php`.** Untested here.
+1. **Detail payload display text.** Album/artist/playlist detail responses return an
+   empty `id` and empty `title` at the root, while the track list parses fine
+   (`album: tracks=1`) and artist/playlist lists come back empty (`topTracks=0`,
+   `tracks=0`). The display text presumably lives in `header_desc` / `subtitle` /
+   `more_info.text`, and the artist lists may need different `n_song`/`n_album`/`p`
+   values. Needs one more probe iteration; search and streaming are unaffected.
+2. **Pagination.** `search.getResults` returns `start` and `total` alongside `results`,
+   so paging is feasible; the observed clients mix 1-based (search `p`) and 0-based
+   (`webapi.get p`) semantics. Not resolved, and nothing paginates in this pass.
+3. **`320kbps` is per track** and frequently `"false"`; the resolver reports the rung it
+   actually finds in the decrypted filename instead of asking for a rung that may not
+   exist. Confirmed working: a probe track resolved to a 96kbps `audio/mp4` CDN URL.
+4. **Rate limiting / geo-blocking.** The probe ran from a GitHub runner, not from India.
+   Behaviour on a real Indian connection is untested.
 5. **Does a `saavn:` id survive the download path?** `DownloadUtil` resolves through
-   `YTPlayerUtils.playerResponseForPlayback`, so it should inherit the new branch, but
-   `DownloadUtil` also stores formats keyed by `mediaId`. Untested.
-6. **Album/artist rows in the local library.** Extension items are inserted into the
-   same Room tables as YouTube items. Whether `Album`/`Artist` entity constraints
-   (e.g. non-null `playlistId`, artist `channelId`) accept the synthetic ids has not
-   been verified by a build.
-7. **Compilation.** This environment has no Android SDK, no JDK and no Gradle, and no
-   network route to Maven. Nothing in this branch has been compiled or run. The only
-   checks performed are structural (see the PR body).
+   `YTPlayerUtils.playerResponseForPlayback`, so it inherits the new branch, but
+   `DownloadUtil` also caches formats keyed by `mediaId`. Untested.
+6. **Album/artist rows in the local library.** Extension items are inserted into the same
+   Room tables as YouTube items; whether entity constraints accept the synthetic ids has
+   not been exercised on a device.
+7. **Runtime behaviour generally.** The branch compiles, its tests pass and the live API
+   paths are exercised, but nothing has run in the app on a device.
