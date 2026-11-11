@@ -22,3 +22,11 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+// The live probe prints the API's real response shapes; surface them in CI logs.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        showStandardStreams = true
+        events("passed", "skipped", "failed")
+    }
+}
