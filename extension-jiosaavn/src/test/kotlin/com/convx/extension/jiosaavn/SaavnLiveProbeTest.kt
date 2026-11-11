@@ -92,16 +92,25 @@ class SaavnLiveProbeTest {
             )
         }
         if (albumId != null) {
-            val page = runCatching { extension.album(albumId) }.getOrNull()
-            println("EXT|album|title='${page?.album?.title}' count=${page?.album?.trackCount} tracks=${page?.tracks?.size}")
+            val result = runCatching { extension.album(albumId) }
+            result.onFailure { println("EXT|album|ERROR ${it::class.simpleName}: ${it.message}") }
+            result.getOrNull()?.let {
+                println("EXT|album|title='${it.album.title}' count=${it.album.trackCount} tracks=${it.tracks.size}")
+            }
         }
         if (artistId != null) {
-            val page = runCatching { extension.artist(artistId) }.getOrNull()
-            println("EXT|artist|title='${page?.artist?.title}' topTracks=${page?.topTracks?.size} albums=${page?.albums?.size}")
+            val result = runCatching { extension.artist(artistId) }
+            result.onFailure { println("EXT|artist|ERROR ${it::class.simpleName}: ${it.message}") }
+            result.getOrNull()?.let {
+                println("EXT|artist|title='${it.artist.title}' topTracks=${it.topTracks.size} albums=${it.albums.size}")
+            }
         }
         if (playlistId != null) {
-            val page = runCatching { extension.playlist(playlistId) }.getOrNull()
-            println("EXT|playlist|title='${page?.playlist?.title}' count=${page?.playlist?.trackCount} tracks=${page?.tracks?.size}")
+            val result = runCatching { extension.playlist(playlistId) }
+            result.onFailure { println("EXT|playlist|ERROR ${it::class.simpleName}: ${it.message}") }
+            result.getOrNull()?.let {
+                println("EXT|playlist|title='${it.playlist.title}' count=${it.playlist.trackCount} tracks=${it.tracks.size}")
+            }
         }
     }
 }
