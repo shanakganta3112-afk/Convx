@@ -26,6 +26,8 @@ include(":artwork")
 include(":network-storage")
 include(":spine")
 include(":hig")
+include(":extension-api")
+include(":extension-jiosaavn")
 
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.

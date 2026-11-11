@@ -12,6 +12,10 @@ import androidx.lifecycle.viewModelScope
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.convx.music.db.MusicDatabase
+import com.convx.music.extensions.ExtensionIds
+import com.convx.music.extensions.ExtensionMediaMapper
+import com.convx.music.extensions.ExtensionRegistry
+import com.music.innertube.pages.AlbumPage
 import com.convx.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,6 +41,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
+    private val extensionRegistry: ExtensionRegistry,
 ) : ViewModel() {
     val albumId = requireNotNull(savedStateHandle.get<String>("albumId")) { "Missing albumId" }
     val thumbArg = savedStateHandle.get<String>("thumb")?.takeIf { it.isNotEmpty() }
@@ -89,7 +94,20 @@ constructor(
                 description.value = album.description
             }
             val albumResult = try {
-                withTimeoutOrNull(25_000) { YouTube.album(albumId) }
+                withTimeoutOrNull(25_000) {
+                    // An extension-owned album id never exists on YouTube, so it must
+                    // not be looked up there. Same AlbumPage type either way, so the
+                    // insert/update path below is shared.
+                    if (ExtensionIds.isExtensionId(albumId)) {
+                        extensionRegistry.album(albumId)
+                            ?.let { Result.success(ExtensionMediaMapper.albumPage(it)) }
+                            ?: Result.failure<AlbumPage>(
+                                java.io.IOException("Extension album $albumId not found")
+                            )
+                    } else {
+                        YouTube.album(albumId)
+                    }
+                }
                     ?: Result.failure(java.io.IOException("Album request timed out"))
             } catch (e: CancellationException) {
                 throw e

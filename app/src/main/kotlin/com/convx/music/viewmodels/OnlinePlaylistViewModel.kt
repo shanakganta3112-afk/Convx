@@ -13,6 +13,9 @@ import com.music.innertube.models.filterVideoSongs
 import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.db.MusicDatabase
+import com.convx.music.extensions.ExtensionIds
+import com.convx.music.extensions.ExtensionMediaMapper
+import com.convx.music.extensions.ExtensionRegistry
 import com.convx.music.utils.dataStore
 import com.convx.music.utils.get
 import com.convx.music.utils.reportException
@@ -82,7 +85,8 @@ object PlaylistMemoryCache {
 class OnlinePlaylistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
-    database: MusicDatabase
+    database: MusicDatabase,
+    private val extensionRegistry: ExtensionRegistry,
 ) : ViewModel() {
     private val playlistId = requireNotNull(savedStateHandle.get<String>("playlistId")) { "Missing playlistId" }
     val routeThumb = savedStateHandle.get<String>("thumbnail")?.takeIf { it.isNotEmpty() }
@@ -148,7 +152,17 @@ class OnlinePlaylistViewModel @Inject constructor(
             _error.value = null
             proactiveLoadJob?.cancel() // Cancel any ongoing proactive load
 
-            YouTube.playlist(playlistId)
+            val playlistResult = if (ExtensionIds.isExtensionId(playlistId)) {
+                extensionRegistry.playlist(playlistId)
+                    ?.let { Result.success(ExtensionMediaMapper.playlistPage(it)) }
+                    ?: Result.failure<com.music.innertube.pages.PlaylistPage>(
+                        java.io.IOException("Extension playlist $playlistId not found")
+                    )
+            } else {
+                YouTube.playlist(playlistId)
+            }
+
+            playlistResult
                 .onSuccess { playlistPage ->
                     playlist.value = playlistPage.playlist
                     val filteredSongs = applySongFilters(playlistPage.songs)

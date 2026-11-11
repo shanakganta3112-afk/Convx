@@ -86,6 +86,7 @@ import com.convx.music.ui.screens.settings.PlayerAdvancedSettings
 import com.convx.music.ui.screens.settings.AppearanceAdvancedSettings
 import com.convx.music.ui.screens.settings.ContentAdvancedSettings
 import com.convx.music.ui.screens.settings.JioSettings
+import com.convx.music.ui.screens.settings.ExtensionsSettingsScreen
 import com.convx.music.ui.screens.settings.LocalFoldersSettingsScreen
 import com.convx.music.ui.screens.settings.ScanMusicScreen
 import com.convx.music.ui.screens.settings.SongTransitionsScreen
@@ -560,6 +561,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     sharedComposable("settings/player/jio") {
         JioSettings(navController, scrollBehavior)
+    }
+
+    sharedComposable("settings/extensions") {
+        ExtensionsSettingsScreen(navController, scrollBehavior)
     }
 
     sharedComposable("settings/scan_music") {

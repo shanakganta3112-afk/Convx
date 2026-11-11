@@ -212,6 +212,10 @@ val SaavnFallbackToYouTubeKey = booleanPreferencesKey("saavnFallbackToYouTube")
 /** When enabled, prevents lossless sources from overriding the selected quality. */
 val ForceSelectedQualityKey = booleanPreferencesKey("forceSelectedQuality")
 
+// Extensions. Off by default, the same way Saavn streaming is opt-in: an extension
+// adds a catalogue to search and browse, so it should be a deliberate choice.
+val ExtensionEnabledKey = booleanPreferencesKey("enableExtensions")
+
 // Lossless (TIDAL via hifi-api). Opt-in, off by default. Streaming only for now.
 val EnableTidalStreamingKey = booleanPreferencesKey("enableTidalStreaming")
 val TidalQualityKey         = stringPreferencesKey("tidalQuality")
