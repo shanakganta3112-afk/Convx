@@ -144,6 +144,7 @@ object SettingsHubs {
                     SettingsLink("Advanced playback", R.drawable.settings, { systemGray }, route("settings/player/advanced"),
                         "Offload, bit-perfect and queue rules", "offload bit perfect duplicates history duration"),
                     SettingsLink("JioSaavn", R.drawable.music_note, { systemTeal }, route("settings/player/jio"), "Streaming source settings"),
+                    SettingsLink("Extensions", R.drawable.music_note, { systemPurple }, route("settings/extensions"), "Extension sources for search and browse", "saavn jiosaavn plugin addon"),
                     SettingsLink("AI DJ analysis", R.drawable.equalizer, { systemPurple }, route("ai_dj_set"),
                         "Analyze songs and build a mix", "bpm key mix analysis"),
                 ),

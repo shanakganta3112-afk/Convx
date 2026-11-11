@@ -23,7 +23,10 @@ import com.convx.music.constants.HideExplicitKey
 import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.constants.HideYoutubeShortsKey
+import com.convx.music.extensions.ExtensionMediaMapper
+import com.convx.music.extensions.ExtensionRegistry
 import com.convx.music.models.ItemsPage
+import com.music.innertube.models.YTItem
 import com.convx.music.utils.dataStore
 import com.convx.music.utils.get
 import com.convx.music.utils.reportException
@@ -41,6 +44,7 @@ class OnlineSearchViewModel
 constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
+    private val extensionRegistry: ExtensionRegistry,
 ) : ViewModel() {
     val query = try {
         URLDecoder.decode(requireNotNull(savedStateHandle.get<String>("query")) { "Missing query" }, "UTF-8")
@@ -91,7 +95,8 @@ constructor(
                                     hideExplicit,
                                 )
                                 .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts),
+                                .filterYoutubeShorts(hideYoutubeShorts) +
+                                extensionItems(filter),
                             result.continuation,
                         )
                 }
@@ -115,6 +120,24 @@ constructor(
             PageCaches.searchResults.remove("$query|${current.value}")
         }
         viewModelScope.launch { load(current) }
+    }
+
+    /**
+     * Extension hits for the current filter, mapped into the same item types the
+     * YouTube results use so the existing rows render them unchanged. Empty when the
+     * extension is off, has nothing for this query, or fails.
+     */
+    private suspend fun extensionItems(filter: SearchFilter): List<YTItem> {
+        val result = extensionRegistry.search(query)
+        if (result.isEmpty) return emptyList()
+        return when (filter) {
+            SearchFilter.FILTER_SONG -> result.tracks.map(ExtensionMediaMapper::song)
+            SearchFilter.FILTER_ALBUM -> result.albums.map(ExtensionMediaMapper::albumItem)
+            SearchFilter.FILTER_ARTIST -> result.artists.map(ExtensionMediaMapper::artistItem)
+            SearchFilter.FILTER_FEATURED_PLAYLIST,
+            SearchFilter.FILTER_COMMUNITY_PLAYLIST -> result.playlists.map(ExtensionMediaMapper::playlistItem)
+            else -> emptyList()
+        }
     }
 
     fun loadMore() {

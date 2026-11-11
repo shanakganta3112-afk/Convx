@@ -358,6 +358,8 @@ dependencies {
     implementation(project(":canvas"))
     implementation(project(":spine"))
     implementation(project(":hig"))
+    implementation(project(":extension-api"))
+    implementation(project(":extension-jiosaavn"))
 
 
     implementation(libs.ktor.client.core)

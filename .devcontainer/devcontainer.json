@@ -1,0 +1,30 @@
+{
+  "name": "Convx (Android)",
+  "image": "mcr.microsoft.com/devcontainers/java:1-21-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/gradle:1": {}
+  },
+  // Android builds need real headroom: Gradle, the Kotlin daemon, AGP and the NDK
+  // will thrash on a 2-core / 4 GB machine.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  // Installs the Android SDK (platform + NDK pinned from app/build.gradle.kts) and
+  // accepts the licences. Idempotent, so a rebuild of the container is cheap.
+  "postCreateCommand": "bash scripts/setup-android-sdk.sh",
+  "remoteEnv": {
+    "ANDROID_HOME": "${containerEnv:HOME}/android-sdk",
+    "ANDROID_SDK_ROOT": "${containerEnv:HOME}/android-sdk",
+    "PATH": "${containerEnv:PATH}:${containerEnv:HOME}/android-sdk/cmdline-tools/latest/bin:${containerEnv:HOME}/android-sdk/platform-tools"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "fwcd.kotlin"
+      ]
+    }
+  }
+}

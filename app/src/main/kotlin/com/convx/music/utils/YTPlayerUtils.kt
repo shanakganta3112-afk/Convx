@@ -37,6 +37,8 @@ import com.convx.music.constants.ModuleSourcesKey
 import com.convx.music.constants.ModuleSettingsKey
 import com.convx.music.constants.SaavnAudioQuality
 import com.convx.music.constants.SaavnAudioQualityKey
+import com.convx.music.extensions.ExtensionIds
+import com.convx.music.extensions.ExtensionStreams
 import com.convx.music.constants.TidalInstanceUrlKey
 import com.convx.music.constants.TidalQuality
 import com.convx.music.constants.TidalQualityKey
@@ -368,6 +370,71 @@ object YTPlayerUtils {
         forceStandardAudio: Boolean = false,
         preferAac: Boolean = false,
     ): Result<PlaybackData> {
+        // Extension-owned ids (for example `saavn:track:...`) have no YouTube
+        // counterpart at all, so they are resolved here and never fall through to the
+        // YouTube path below. Placed alongside the existing spine intercept, which is
+        // the precedent for provider intercepts in this function.
+        if (context != null && ExtensionIds.isExtensionId(videoId)) {
+            val extensionStream = runCatching {
+                ExtensionStreams.resolve(context, videoId)
+            }.getOrNull()
+                ?: return Result.failure(
+                    IOException("Extension could not resolve a stream for $videoId")
+                )
+
+            val kbps = extensionStream.bitrateKbps ?: 320
+            val (itag, qualityLabel) = when {
+                kbps >= 320 -> 141 to "320kbps"
+                kbps >= 160 -> 140 to "160kbps"
+                else -> 139 to "96kbps"
+            }
+            // Saavn serves AAC-LC inside a plain MP4 container; ExoPlayer needs the
+            // codec hint, so a bare "audio/mp4" is upgraded to the same string the
+            // Saavn intercept above uses.
+            val rawMimeType = extensionStream.mimeType
+            val mimeType = if (rawMimeType == null || rawMimeType == "audio/mp4") {
+                "audio/mp4; codecs=\"mp4a.40.2\""
+            } else {
+                rawMimeType
+            }
+
+            Timber.tag(TAG).i("Extension: streaming ${kbps}kbps for mediaId=$videoId")
+            return Result.success(
+                PlaybackData(
+                    audioConfig = null,
+                    videoDetails = null,
+                    playbackTracking = null,
+                    format = PlayerResponse.StreamingData.Format(
+                        itag = itag,
+                        url = extensionStream.url,
+                        mimeType = mimeType,
+                        bitrate = kbps * 1_000,
+                        width = null,
+                        height = null,
+                        contentLength = null,
+                        quality = qualityLabel,
+                        fps = null,
+                        qualityLabel = null,
+                        averageBitrate = null,
+                        audioQuality = qualityLabel,
+                        approxDurationMs = null,
+                        audioSampleRate = null,
+                        audioChannels = null,
+                        loudnessDb = null,
+                        lastModified = null,
+                        signatureCipher = null,
+                        cipher = null,
+                        audioTrack = null,
+                    ),
+                    streamUrl = extensionStream.url,
+                    streamExpiresInSeconds = 3600,
+                    // Same flag the Saavn intercept sets: the URL is a direct CDN file,
+                    // so the download path must not apply the YouTube range trick.
+                    isSaavnStream = true,
+                )
+            )
+        }
+
         if (context != null) {
             // Honor selected quality only when Saavn is enabled.
             val forceSelectedQuality = context.dataStore.get(EnableSaavnStreamingKey, false) &&

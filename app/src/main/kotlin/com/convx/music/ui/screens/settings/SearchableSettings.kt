@@ -107,6 +107,7 @@ fun getAllSearchableSettings(): List<SearchableSetting> {
         SearchableSetting(stringResource(R.string.ai_base_url), null, "Lyrics", "settings/ai"),
         SearchableSetting(stringResource(R.string.ai_setup_guide), null, "Lyrics", "settings/ai"),
         SearchableSetting("JioSaavn", null, "Playback & audio", "settings/player/jio"),
+        SearchableSetting("Extensions", "Extension sources for search and browse", "Library & content", "settings/extensions", keywords = "saavn jiosaavn plugin addon extension"),
         SearchableSetting(stringResource(R.string.audio_normalization), null, "Playback & audio", "settings/player"),
         SearchableSetting(stringResource(R.string.audio_offload), null, "Playback & audio", "settings/player/advanced"),
         SearchableSetting(stringResource(R.string.audio_quality), null, "Playback & audio", "settings/player"),

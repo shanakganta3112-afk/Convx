@@ -22,6 +22,9 @@ import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.constants.HideYoutubeShortsKey
 import com.convx.music.db.MusicDatabase
+import com.convx.music.extensions.ExtensionIds
+import com.convx.music.extensions.ExtensionMediaMapper
+import com.convx.music.extensions.ExtensionRegistry
 import com.convx.music.extensions.filterExplicit
 import com.convx.music.extensions.filterExplicitAlbums
 import com.convx.music.utils.dataStore
@@ -49,6 +52,7 @@ class ArtistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
+    private val extensionRegistry: ExtensionRegistry,
 ) : ViewModel() {
     val artistId = requireNotNull(savedStateHandle.get<String>("artistId")) { "Missing artistId" }
     val thumbArg = savedStateHandle.get<String>("thumb")?.takeIf { it.isNotEmpty() }
@@ -101,7 +105,12 @@ class ArtistViewModel @Inject constructor(
     fun fetchArtistsFromYTM() {
         viewModelScope.launch {
             val page = PageCaches.artistPages.get(artistId) {
-                YouTube.artist(artistId).onFailure { reportException(it) }.getOrNull()
+                if (ExtensionIds.isExtensionId(artistId)) {
+                    extensionRegistry.artist(artistId)
+                        ?.let(ExtensionMediaMapper::artistPage)
+                } else {
+                    YouTube.artist(artistId).onFailure { reportException(it) }.getOrNull()
+                }
             } ?: return@launch
             com.convx.music.utils.AppleArt.prefetch(context, com.convx.music.utils.AppleArtQuery.Artist(page.artist.title))
             artistPage = page.filtered()
