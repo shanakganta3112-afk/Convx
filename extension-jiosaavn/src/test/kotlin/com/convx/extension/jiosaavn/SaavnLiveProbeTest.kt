@@ -3,68 +3,105 @@ package com.convx.extension.jiosaavn
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
- * Prints the real shape of api.php responses so the parsers can be checked against
- * captured output instead of against another client's source.
+ * Prints the real shape of api.php responses and then drives the extension end to end,
+ * so the parsers can be checked against captured output instead of against another
+ * client's source.
  *
  * Skipped unless SAAVN_LIVE=1, so the normal test task never touches the network.
- * Run it from the "JioSaavn API probe" workflow.
+ * Run it from the "CI & Debug Build" workflow with `probe_saavn` set to true.
  */
 class SaavnLiveProbeTest {
 
     private val api = SaavnApi()
+    private val parser = SaavnParser()
 
     private fun keys(obj: JsonObject?): String =
         obj?.keys?.sorted()?.joinToString(",") ?: "<none>"
 
-    private fun firstObject(obj: JsonObject, key: String): JsonObject? =
-        (obj[key] as? JsonArray)?.firstOrNull() as? JsonObject
+    private fun id(obj: JsonObject, key: String): String? =
+        (obj[key] as? JsonPrimitive)?.content
 
-    private fun dump(label: String, response: JsonObject, listKeys: List<String> = listOf("results", "songs", "list")) {
+    private fun firstObject(response: JsonObject, key: String): JsonObject? =
+        (response[key] as? JsonArray)?.firstOrNull() as? JsonObject
+
+    private fun dump(label: String, response: JsonObject) {
         println("PROBE|$label|root=${keys(response)}")
-        for (key in listKeys) {
+        for (key in listOf("results", "songs", "list")) {
             val array = response[key] as? JsonArray ?: continue
             println("PROBE|$label|array '$key' size=${array.size}")
             val item = array.firstOrNull() as? JsonObject ?: continue
             println("PROBE|$label|item keys=${keys(item)}")
-            val moreInfo = item["more_info"] as? JsonObject
-            if (moreInfo != null) println("PROBE|$label|more_info keys=${keys(moreInfo)}")
-            for (nested in listOf("artistMap", "topSongs", "topAlbums", "songs", "list")) {
-                val value = item[nested]
-                if (value is JsonArray) println("PROBE|$label|nested '$nested' is array size=${value.size}")
-                if (value is JsonObject) println("PROBE|$label|nested '$nested' is object keys=${keys(value)}")
-            }
+            (item["more_info"] as? JsonObject)?.let { println("PROBE|$label|more_info keys=${keys(it)}") }
         }
     }
 
-    @Test fun `probe live api shapes`() = runBlocking {
+    @Test fun `probe live api shapes and extension surface`() = runBlocking {
         assumeTrue("set SAAVN_LIVE=1 to run", System.getenv("SAAVN_LIVE") == "1")
-
         val query = System.getenv("SAAVN_QUERY") ?: "kesariya"
 
         val songs = api.call(SaavnCalls.SEARCH_TRACKS, SaavnCalls.search(query))
-        dump("search.getResults", songs, listOf("results"))
-
         val albums = api.call(SaavnCalls.SEARCH_ALBUMS, SaavnCalls.search(query))
-        dump("search.getAlbumResults", albums, listOf("results"))
-
         val artists = api.call(SaavnCalls.SEARCH_ARTISTS, SaavnCalls.search(query))
-        dump("search.getArtistResults", artists, listOf("results"))
-
         val playlists = api.call(SaavnCalls.SEARCH_PLAYLISTS, SaavnCalls.search(query))
-        dump("search.getPlaylistResults", playlists, listOf("results"))
+        dump("search.getResults", songs)
+        dump("search.getAlbumResults", albums)
+        dump("search.getArtistResults", artists)
+        dump("search.getPlaylistResults", playlists)
 
-        val songId = firstObject(songs, "results")?.let { (it["id"] as? kotlinx.serialization.json.JsonPrimitive)?.content }
-        val albumId = firstObject(albums, "results")?.let { (it["id"] as? kotlinx.serialization.json.JsonPrimitive)?.content }
-        val artistId = firstObject(artists, "results")?.let { (it["id"] as? kotlinx.serialization.json.JsonPrimitive)?.content }
-        val playlistId = firstObject(playlists, "results")?.let { (it["id"] as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        val songId = firstObject(songs, "results")?.let { id(it, "id") }
+        val albumId = firstObject(albums, "results")?.let { id(it, "id") }
+        val artistId = firstObject(artists, "results")?.let { id(it, "id") }
+        val playlistId = firstObject(playlists, "results")?.let { id(it, "id") }
+        println("PROBE|ids|song=$songId album=$albumId artist=$artistId playlist=$playlistId")
 
-        if (songId != null) dump("webapi.get song", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.song(songId)))
+        if (songId != null) dump("song.getDetails", api.call(SaavnCalls.SONG_DETAILS, SaavnCalls.song(songId)))
         if (albumId != null) dump("webapi.get album", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.album(albumId)))
         if (artistId != null) dump("webapi.get artist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.artist(artistId)))
         if (playlistId != null) dump("webapi.get playlist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.playlist(playlistId)))
+
+        // Now drive the extension the way the app does, so the mapping is verified too.
+        val extension = JioSaavnExtension()
+
+        val search = extension.search(query)
+        println(
+            "EXT|search|tracks=${search.tracks.size} albums=${search.albums.size} " +
+                "artists=${search.artists.size} playlists=${search.playlists.size}"
+        )
+        search.tracks.firstOrNull()?.let {
+            println(
+                "EXT|track|title='${it.title}' artists=${it.artists.map { a -> a.name }} " +
+                    "album='${it.albumTitle}' durationMs=${it.durationMs} streamable=${it.streamable}"
+            )
+        }
+        search.albums.firstOrNull()?.let { println("EXT|album-item|'${it.title}' year=${it.year} count=${it.trackCount}") }
+        search.artists.firstOrNull()?.let { println("EXT|artist-item|'${it.title}'") }
+        search.playlists.firstOrNull()?.let { println("EXT|playlist-item|'${it.title}' count=${it.trackCount} owner=${it.owner}") }
+
+        if (songId != null) {
+            val stream = extension.stream(songId)
+            println(
+                "EXT|stream|" + (
+                    stream?.let { "url=${it.url.take(48)}… kbps=${it.bitrateKbps} mime=${it.mimeType}" }
+                        ?: "null (no stream resolved)"
+                    )
+            )
+        }
+        if (albumId != null) {
+            val page = runCatching { extension.album(albumId) }.getOrNull()
+            println("EXT|album|title='${page?.album?.title}' count=${page?.album?.trackCount} tracks=${page?.tracks?.size}")
+        }
+        if (artistId != null) {
+            val page = runCatching { extension.artist(artistId) }.getOrNull()
+            println("EXT|artist|title='${page?.artist?.title}' topTracks=${page?.topTracks?.size} albums=${page?.albums?.size}")
+        }
+        if (playlistId != null) {
+            val page = runCatching { extension.playlist(playlistId) }.getOrNull()
+            println("EXT|playlist|title='${page?.playlist?.title}' count=${page?.playlist?.trackCount} tracks=${page?.tracks?.size}")
+        }
     }
 }

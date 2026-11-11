@@ -67,7 +67,10 @@ class SaavnParser {
             cover = imageUrl(stringOf(obj, "image")),
             artists = artistsFrom(moreInfo?.get("artistMap") as? JsonObject),
             year = stringOf(obj, "year")?.toIntOrNull(),
-            trackCount = stringOf(obj, "song_count")?.toIntOrNull(),
+            // Captured: song_count sits inside more_info on search results, and is
+            // absent from the album detail root.
+            trackCount = stringOf(obj, "song_count")?.toIntOrNull()
+                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull(),
         )
     }
 
@@ -94,7 +97,11 @@ class SaavnParser {
             title = decodeHtml(stringOf(obj, "title").orEmpty()),
             cover = imageUrl(stringOf(obj, "image")),
             owner = owner,
-            trackCount = stringOf(obj, "song_count")?.toIntOrNull(),
+            // Captured: search results carry `numsongs`; detail carries
+            // `more_info.song_count`.
+            trackCount = stringOf(obj, "numsongs")?.toIntOrNull()
+                ?: stringOf(obj, "song_count")?.toIntOrNull()
+                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull(),
         )
     }
 

@@ -82,8 +82,12 @@ class JioSaavnExtension(
     }
 
     override suspend fun stream(trackId: String): ExtensionStream? {
-        val response = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.song(trackId))
-        val song = parser.rawObjects(response, "songs").firstOrNull() ?: return null
+        val response = api.call(SaavnCalls.SONG_DETAILS, SaavnCalls.song(trackId))
+        // The detail call returns either a `songs` array or an object keyed by song id.
+        val song = parser.rawObjects(response, "songs").firstOrNull()
+            ?: (response[trackId] as? JsonObject)
+            ?: response.takeIf { parser.stringOf(it, "id") == trackId }
+            ?: return null
         val moreInfo = parser.moreInfo(song) ?: return null
         val encrypted = parser.stringOf(moreInfo, "encrypted_media_url")?.takeIf { it.isNotBlank() }
             ?: return null

@@ -14,6 +14,7 @@ object SaavnCalls {
     const val SEARCH_PLAYLISTS = "search.getPlaylistResults"
 
     const val WEBAPI_GET = "webapi.get"
+    const val SONG_DETAILS = "song.getDetails"
 
     fun search(query: String, page: Int = 1, limit: Int = 20): Map<String, String> = mapOf(
         "q" to query,
@@ -21,9 +22,14 @@ object SaavnCalls {
         "n" to limit.toString(),
     )
 
+    /**
+     * Song detail is `song.getDetails` with `pids`, not `webapi.get type=song` — the
+     * latter answers `{"results": []}` for a search-result id (captured in CI), while
+     * Convx's own SaavnService uses this call and gets `more_info.encrypted_media_url`.
+     */
     fun song(token: String): Map<String, String> = mapOf(
-        "type" to "song",
-        "token" to token,
+        "pids" to token,
+        "ctx" to "android",
     )
 
     fun album(token: String): Map<String, String> = mapOf(
