@@ -61,7 +61,10 @@ jobs:
           SAAVN_LIVE: "1"
         run: ./gradlew :extension-jiosaavn:test --tests '*SaavnLiveProbeTest*' --console=plain
 
+      # A probe run only needs the network calls above; skip the slow APK build so the
+      # loop stays minutes rather than quarter-hours.
       - name: Build Debug APK
+        if: ${{ !inputs.probe_saavn }}
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
@@ -69,6 +72,7 @@ jobs:
           ./gradlew assembleUniversalGmsDebug --no-configuration-cache --console=plain --warning-mode summary
 
       - name: Upload Debug APK
+        if: ${{ !inputs.probe_saavn }}
         uses: actions/upload-artifact@v4
         with:
           name: app-universal-gms-debug
