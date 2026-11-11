@@ -2,6 +2,11 @@ name: CI & Debug Build
 
 on:
   workflow_dispatch:
+    inputs:
+      probe_saavn:
+        description: 'Also probe the live JioSaavn API and print response shapes'
+        type: boolean
+        default: false
   push:
     branches: [ '**' ]
     paths-ignore:
@@ -49,6 +54,12 @@ jobs:
             -keysize 2048 \
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Probe live JioSaavn API shapes
+        if: ${{ inputs.probe_saavn }}
+        env:
+          SAAVN_LIVE: "1"
+        run: ./gradlew :extension-jiosaavn:test --tests '*SaavnLiveProbeTest*' --console=plain
 
       - name: Build Debug APK
         env:
