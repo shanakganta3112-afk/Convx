@@ -4,6 +4,7 @@ import com.convx.extension.api.AlbumClient
 import com.convx.extension.api.ArtistClient
 import com.convx.extension.api.ExtensionAlbumPage
 import com.convx.extension.api.ExtensionArtistPage
+import com.convx.extension.api.ExtensionClient
 import com.convx.extension.api.ExtensionException
 import com.convx.extension.api.ExtensionMetadata
 import com.convx.extension.api.ExtensionPlaylistPage
@@ -28,7 +29,7 @@ import kotlinx.serialization.json.JsonObject
 class JioSaavnExtension(
     private val api: SaavnApi = SaavnApi(),
     private val parser: SaavnParser = SaavnParser(),
-) : SearchClient, AlbumClient, ArtistClient, PlaylistClient, StreamClient {
+) : ExtensionClient, SearchClient, AlbumClient, ArtistClient, PlaylistClient, StreamClient {
 
     val metadata: ExtensionMetadata = METADATA
 
