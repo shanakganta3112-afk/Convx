@@ -49,8 +49,11 @@ jobs:
           unzip -q dex-tools.zip
           mkdir -p eapk
           unzip -o -q saavn.eapk classes.dex -d eapk
-          chmod +x dex-tools-2.4/d2j-dex2jar.sh
-          ./dex-tools-2.4/d2j-dex2jar.sh -f -o saavn.jar eapk/classes.dex
+          # The zip's top-level directory name has changed between releases.
+          SCRIPT=$(find . -name 'd2j-dex2jar.sh' | head -1)
+          echo "using $SCRIPT"
+          chmod +x "$SCRIPT"
+          "$SCRIPT" -f -o saavn.jar eapk/classes.dex
           ls -l saavn.jar
 
       - name: Drive the extension
