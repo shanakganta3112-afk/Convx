@@ -20,7 +20,17 @@ fun main(args: Array<String>) = runBlocking {
         QuickSearchClient::class.java.classLoader,
     )
     val clazz = loader.loadClass("dev.brahmkshatriya.echo.extension.SaavnExtension")
-    val instance = clazz.getConstructor().newInstance()
+    println("HARNESS|class loaded ${clazz.name}")
+    val instance = try {
+        clazz.getConstructor().newInstance()
+    } catch (e: Throwable) {
+        var c: Throwable? = e
+        while (c != null) {
+            println("HARNESS|ctor failure ${c::class.java.name}: ${c.message}")
+            c = c.cause
+        }
+        return@runBlocking
+    }
     println("HARNESS|instantiated ${instance::class.java.name}")
 
     val quick = instance as? QuickSearchClient
