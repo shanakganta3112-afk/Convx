@@ -129,9 +129,14 @@ object EchoSaavnHost {
     suspend fun stream(context: Context, rawId: String): ExtensionStream? {
         val track = tracks[rawId] ?: return null
         val trackClient = load(context) as? TrackClient ?: return null
-        val streamable = track.streamables.firstOrNull() ?: return null
         return withContext(Dispatchers.IO) {
             runCatching {
+                // quickSearch hands back unloaded tracks: no artists, no streamables.
+                // loadTrack hydrates one, and only the hydrated track carries the
+                // streamable that loadStreamableMedia needs. Skipping this step is why
+                // playback silently fell through to the compiled-in client.
+                val hydrated = trackClient.loadTrack(track, false)
+                val streamable = hydrated.streamables.firstOrNull() ?: return@runCatching null
                 val media = trackClient.loadStreamableMedia(streamable, false)
                 val server = media as? Streamable.Media.Server ?: return@runCatching null
                 val source = server.sources
