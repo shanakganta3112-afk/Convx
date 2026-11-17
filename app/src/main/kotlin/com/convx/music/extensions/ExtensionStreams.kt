@@ -7,6 +7,7 @@ package com.convx.music.extensions
 
 import android.content.Context
 import com.convx.extension.api.ExtensionStream
+import com.convx.music.extensions.echo.EchoSaavnHost
 import com.convx.music.constants.ExtensionEnabledKey
 import com.convx.music.utils.dataStore
 import com.convx.music.utils.get
@@ -27,6 +28,11 @@ object ExtensionStreams {
         if (!ExtensionIds.isExtensionId(mediaId)) return null
         if (!context.dataStore.get(ExtensionEnabledKey, true)) return null
         val raw = ExtensionIds.rawId(mediaId) ?: return null
+        // A track the Echo extension handed out is resolved by that extension, because
+        // its contract needs the Track object it saw. Anything else — a saved item, a
+        // queue entry from an earlier session — has no object and goes to the
+        // compiled-in client, which reaches the same ids.
+        EchoSaavnHost.stream(context, raw)?.let { return it }
         return withContext(Dispatchers.IO) {
             runCatching { ExtensionHost.jioSaavn.stream(raw) }
                 .onFailure { reportException(it) }

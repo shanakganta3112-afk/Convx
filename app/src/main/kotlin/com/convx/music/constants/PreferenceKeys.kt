@@ -222,6 +222,12 @@ val ExtensionEnabledKey = booleanPreferencesKey("enableExtensions")
  */
 val SaavnOnlyKey = booleanPreferencesKey("saavnOnly")
 
+/**
+ * Search through the downloaded Echo extension instead of the compiled-in client.
+ * Off by default: it downloads an APK on first use and loads foreign code.
+ */
+val EchoSaavnKey = booleanPreferencesKey("echoSaavn")
+
 // Lossless (TIDAL via hifi-api). Opt-in, off by default. Streaming only for now.
 val EnableTidalStreamingKey = booleanPreferencesKey("enableTidalStreaming")
 val TidalQualityKey         = stringPreferencesKey("tidalQuality")

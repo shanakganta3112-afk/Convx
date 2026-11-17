@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.convx.music.constants.SaavnOnlyKey
+import com.convx.music.constants.EchoSaavnKey
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -48,6 +49,10 @@ fun ExtensionsSettingsScreen(
     )
     val (saavnOnly, onSaavnOnlyChange) = rememberPreference(
         SaavnOnlyKey,
+        defaultValue = false,
+    )
+    val (echoSaavn, onEchoSaavnChange) = rememberPreference(
+        EchoSaavnKey,
         defaultValue = false,
     )
 
@@ -107,6 +112,17 @@ fun ExtensionsSettingsScreen(
                         )
                     },
                     onClick = { onSaavnOnlyChange(!saavnOnly) },
+                ),
+                IosSettingsItem(
+                    title = { Text(stringResource(R.string.echo_saavn_title)) },
+                    description = { Text(stringResource(R.string.echo_saavn_desc)) },
+                    trailingContent = {
+                        ModernSwitch(
+                            checked = echoSaavn,
+                            onCheckedChange = onEchoSaavnChange,
+                        )
+                    },
+                    onClick = { onEchoSaavnChange(!echoSaavn) },
                 )
             ),
         )

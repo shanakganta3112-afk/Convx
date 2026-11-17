@@ -106,6 +106,8 @@
     <string name="search_provider_music">Search %1$s…</string>
     <string name="your_provider_playlists">Your %1$s playlists</string>
     <string name="saavn_only_group">Source</string>
+    <string name="echo_saavn_title">Echo extension (Saavn)</string>
+    <string name="echo_saavn_desc">Search through the downloaded Echo extension APK instead of the built-in client. Downloads once on first use and runs third-party code.</string>
     <string name="saavn_only_title">JioSaavn only</string>
     <string name="saavn_only_desc">Stop using YouTube: search and browse only JioSaavn, and rename the source throughout the app.</string>
     <string name="search_library">Search library…</string>

@@ -359,6 +359,11 @@ dependencies {
     implementation(project(":spine"))
     implementation(project(":hig"))
     implementation(project(":extension-api"))
+    // Echo's extension contract, from Maven Central. This is what lets an Echo
+    // extension APK link at runtime: the eapk references
+    // dev.brahmkshatriya.echo.common.*, so those exact classes must be on the
+    // classpath. Re-expressing them in our own package would not link.
+    implementation("dev.brahmkshatriya.echo:common:1.0.0")
     implementation(project(":extension-jiosaavn"))
 
 

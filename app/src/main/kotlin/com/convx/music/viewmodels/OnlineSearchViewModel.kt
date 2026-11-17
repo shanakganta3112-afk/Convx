@@ -21,6 +21,9 @@ import com.music.innertube.models.filterYoutubeShorts
 import com.music.innertube.pages.SearchSummaryPage
 import com.convx.music.constants.HideExplicitKey
 import com.convx.music.constants.SaavnOnlyKey
+import com.convx.music.constants.EchoSaavnKey
+import com.convx.music.extensions.echo.EchoSaavnHost
+import com.convx.extension.api.ExtensionSearchResult
 import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.constants.HideYoutubeShortsKey
@@ -148,7 +151,15 @@ constructor(
      * extension is off, has nothing for this query, or fails.
      */
     private suspend fun extensionItems(filter: SearchFilter): List<YTItem> {
-        val result = extensionRegistry.search(query)
+        // The Echo extension is asked first when it is enabled. It reaches the same
+        // JioSaavn ids, so falling back to the compiled-in client for the same query
+        // costs nothing when the download or the load fails.
+        val echo = if (context.dataStore.get(EchoSaavnKey, false)) {
+            EchoSaavnHost.search(context, query)
+        } else {
+            ExtensionSearchResult()
+        }
+        val result = if (echo.isEmpty) extensionRegistry.search(query) else echo
         if (result.isEmpty) return emptyList()
         return when (filter) {
             SearchFilter.FILTER_SONG -> result.tracks.map(ExtensionMediaMapper::song)
