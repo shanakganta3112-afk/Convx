@@ -65,6 +65,17 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Convx Test Build,O=Convx,C=IN"
 
+      - name: Raise compiler memory
+        # The checked-in gradle.properties runs the Kotlin compiler in-process in a
+        # 2.5 GB JVM. Compiling this module graph that way intermittently exhausts the
+        # JVM CodeCache ("Out of space in CodeCache for method handle intrinsic") and
+        # the compiler dies with an internal error. Give it a daemon and a real code cache.
+        run: |
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4096M -Xms512M -XX:ReservedCodeCacheSize=512m/' gradle.properties
+          sed -i 's/^kotlin.compiler.execution.strategy=.*/kotlin.compiler.execution.strategy=daemon/' gradle.properties
+          grep -q '^kotlin.daemon.jvmargs=' gradle.properties || echo 'kotlin.daemon.jvmargs=-Xmx6144M -XX:ReservedCodeCacheSize=768m' >> gradle.properties
+          grep -E 'jvmargs|execution.strategy' gradle.properties
+
       - name: Build arm64 GMS release APK
         env:
           STORE_PASSWORD: convxbuild
