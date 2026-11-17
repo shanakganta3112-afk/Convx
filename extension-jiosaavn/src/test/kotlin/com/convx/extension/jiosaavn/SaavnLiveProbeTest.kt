@@ -145,4 +145,69 @@ class SaavnLiveProbeTest {
             }
         }
     }
+
+    /**
+     * The `webapi.get type=album|artist|playlist` calls return shells — empty title,
+     * zero tracks — so the detail pages cannot be built from them. This tries the
+     * dedicated detail endpoints instead and prints what each one returns.
+     */
+    @Test fun `probe alternative detail endpoints`() = runBlocking {
+        assumeTrue("set SAAVN_LIVE=1 to run", System.getenv("SAAVN_LIVE") == "1")
+        val query = System.getenv("SAAVN_QUERY") ?: "kesariya"
+
+        val albums = api.call(SaavnCalls.SEARCH_ALBUMS, SaavnCalls.search(query))
+        val artists = api.call(SaavnCalls.SEARCH_ARTISTS, SaavnCalls.search(query))
+        val playlists = api.call(SaavnCalls.SEARCH_PLAYLISTS, SaavnCalls.search(query))
+
+        val albumId = firstObject(albums, "results")?.let { id(it, "id") }
+        val artistId = firstObject(artists, "results")?.let { id(it, "id") }
+        val playlistId = firstObject(playlists, "results")?.let { id(it, "id") }
+        println("ALT|ids|album=$albumId artist=$artistId playlist=$playlistId")
+
+        if (albumId != null) {
+            for ((call, params) in listOf(
+                "content.getAlbumDetails" to mapOf("albumid" to albumId),
+                "album.getAlbumDetails" to mapOf("albumid" to albumId, "ctx" to "android"),
+            )) {
+                val r = runCatching { api.call(call, params) }
+                r.onFailure { println("ALT|$call|ERROR ${it::class.simpleName}: ${it.message?.take(120)}") }
+                r.getOrNull()?.let {
+                    println("ALT|$call|root=${keys(it)}")
+                    values("$call album", it)
+                }
+            }
+        }
+
+        if (artistId != null) {
+            for ((call, params) in listOf(
+                "artist.getArtistPageDetails" to mapOf("artistId" to artistId),
+                "artist.getArtistPageDetails" to mapOf(
+                    "artistId" to artistId, "n_song" to "20", "n_album" to "20",
+                    "page" to "0", "category" to "popularity", "sort_order" to "asc",
+                    "ctx" to "android",
+                ),
+            )) {
+                val r = runCatching { api.call(call, params) }
+                r.onFailure { println("ALT|$call|ERROR ${it::class.simpleName}: ${it.message?.take(120)}") }
+                r.getOrNull()?.let {
+                    println("ALT|$call|root=${keys(it)}")
+                    values("$call artist", it)
+                }
+            }
+        }
+
+        if (playlistId != null) {
+            for ((call, params) in listOf(
+                "playlist.getDetails" to mapOf("listid" to playlistId),
+                "playlist.getDetails" to mapOf("listid" to playlistId, "ctx" to "android"),
+            )) {
+                val r = runCatching { api.call(call, params) }
+                r.onFailure { println("ALT|$call|ERROR ${it::class.simpleName}: ${it.message?.take(120)}") }
+                r.getOrNull()?.let {
+                    println("ALT|$call|root=${keys(it)}")
+                    values("$call playlist", it)
+                }
+            }
+        }
+    }
 }
