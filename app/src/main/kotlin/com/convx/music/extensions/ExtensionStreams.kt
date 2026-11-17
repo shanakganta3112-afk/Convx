@@ -25,7 +25,7 @@ object ExtensionStreams {
 
     suspend fun resolve(context: Context, mediaId: String): ExtensionStream? {
         if (!ExtensionIds.isExtensionId(mediaId)) return null
-        if (!context.dataStore.get(ExtensionEnabledKey, false)) return null
+        if (!context.dataStore.get(ExtensionEnabledKey, true)) return null
         val raw = ExtensionIds.rawId(mediaId) ?: return null
         return withContext(Dispatchers.IO) {
             runCatching { ExtensionHost.jioSaavn.stream(raw) }

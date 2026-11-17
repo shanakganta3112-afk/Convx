@@ -1,0 +1,128 @@
+name: Low-end arm64 APK
+
+# Builds an arm64-only RELEASE APK on GitHub runners and signs it explicitly.
+#
+# Why not release.yml: arm64 is the ABI every current budget phone runs, and the
+# universal build also carries 30.6 MB of x86_64 libraries no phone can execute.
+#
+# Why explicit signing: the Gradle release signingConfig is applied behind an
+# `if (file("keystore/release.keystore").exists())` check, and on the first run of
+# this workflow the keystore was created but the APK still came out unsigned. So
+# this job signs with apksigner afterwards and verifies the result, failing loudly
+# if the APK is not signed.
+
+on:
+  push:
+    branches:
+      - saavn-primary
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build_arm64:
+    name: Build arm64 GMS release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Generate debug.keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Generate signing keystore
+        run: |
+          mkdir -p app/keystore
+          keytool -genkeypair -v \
+            -keystore app/keystore/release.keystore \
+            -storepass convxbuild \
+            -alias convx \
+            -keypass convxbuild \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Convx Test Build,O=Convx,C=IN"
+
+      - name: Raise compiler memory
+        # The checked-in gradle.properties runs the Kotlin compiler in-process in a
+        # 2.5 GB JVM. Compiling this module graph that way intermittently exhausts the
+        # JVM CodeCache ("Out of space in CodeCache for method handle intrinsic") and
+        # the compiler dies with an internal error. Give it a daemon and a real code cache.
+        run: |
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4096M -Xms512M -XX:ReservedCodeCacheSize=512m/' gradle.properties
+          sed -i 's/^kotlin.compiler.execution.strategy=.*/kotlin.compiler.execution.strategy=daemon/' gradle.properties
+          grep -q '^kotlin.daemon.jvmargs=' gradle.properties || echo 'kotlin.daemon.jvmargs=-Xmx6144M -XX:ReservedCodeCacheSize=768m' >> gradle.properties
+          grep -E 'jvmargs|execution.strategy' gradle.properties
+
+      - name: Build arm64 GMS release APK
+        env:
+          STORE_PASSWORD: convxbuild
+          KEY_ALIAS: convx
+          KEY_PASSWORD: convxbuild
+        run: |
+          ./gradlew assembleArm64GmsRelease \
+            --no-configuration-cache --console=plain --warning-mode summary \
+            -x lint --stacktrace
+
+      - name: Sign the APK
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $BUILD_TOOLS"
+          APK=$(find app/build/outputs/apk/arm64Gms/release -name '*.apk' | head -1)
+          echo "unsigned input: $APK"
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$APK" aligned.apk
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks app/keystore/release.keystore \
+            --ks-pass pass:convxbuild \
+            --key-pass pass:convxbuild \
+            --ks-key-alias convx \
+            --v1-signing-enabled false \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out convx-arm64-lowend.apk aligned.apk
+          echo "--- verification ---"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs convx-arm64-lowend.apk
+
+      - name: Inspect the APK
+        # No pipefail here: `sort | head` closes the pipe early and SIGPIPE would
+        # fail the step after the APK is already built and signed.
+        run: |
+          set -eu
+          ls -l convx-arm64-lowend.apk
+          sha256sum convx-arm64-lowend.apk
+          echo "--- ABIs present ---"
+          unzip -l convx-arm64-lowend.apk | grep -oE 'lib/[^/]+/' | sort -u
+          echo "--- heaviest entries ---"
+          unzip -l convx-arm64-lowend.apk | sort -rn | head -8 || true
+
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: convx-saavn-arm64
+          path: convx-arm64-lowend.apk
+          if-no-files-found: error
+          retention-days: 30

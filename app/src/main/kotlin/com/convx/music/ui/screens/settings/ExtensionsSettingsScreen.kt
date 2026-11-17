@@ -43,7 +43,7 @@ fun ExtensionsSettingsScreen(
 ) {
     val (extensionsEnabled, onExtensionsEnabledChange) = rememberPreference(
         ExtensionEnabledKey,
-        defaultValue = false,
+        defaultValue = true,
     )
 
     SettingsPage(

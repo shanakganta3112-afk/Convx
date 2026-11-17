@@ -47,8 +47,12 @@ class ExtensionRegistry @Inject constructor(
         MusicExtension(metadata = jioSaavn.metadata, client = jioSaavn),
     )
 
-    /** Off until the user turns it on, matching how Saavn streaming is gated. */
-    suspend fun isEnabled(): Boolean = context.dataStore.get(ExtensionEnabledKey, false)
+    /**
+     * On by default: the JioSaavn extension is a primary source, not an add-on, so a
+     * fresh install searches it without a trip to settings. The switch on the
+     * Extensions screen still turns it off.
+     */
+    suspend fun isEnabled(): Boolean = context.dataStore.get(ExtensionEnabledKey, true)
 
     suspend fun search(query: String): ExtensionSearchResult {
         if (query.isBlank() || !isEnabled()) return ExtensionSearchResult()

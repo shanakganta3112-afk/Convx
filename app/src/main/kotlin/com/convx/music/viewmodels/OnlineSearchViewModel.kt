@@ -87,16 +87,21 @@ constructor(
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false) || context.dataStore.get(DataSaverEnabledKey, false)
                     val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                    // Extension hits lead the page: JioSaavn is a primary source, so
+                    // its results sit above the YouTube ones rather than below them.
+                    // Ids are namespaced (`saavn:`), so distinctBy cannot drop either
+                    // provider's copy of a song.
+                    val extension = extensionItems(filter)
+                    val youtube = result.items
+                        .distinctBy { it.id }
+                        .filterExplicit(
+                            hideExplicit,
+                        )
+                        .filterVideoSongs(hideVideoSongs)
+                        .filterYoutubeShorts(hideYoutubeShorts)
                     viewStateMap[filter.value] =
                         ItemsPage(
-                            result.items
-                                .distinctBy { it.id }
-                                .filterExplicit(
-                                    hideExplicit,
-                                )
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts) +
-                                extensionItems(filter),
+                            (extension + youtube).distinctBy { it.id },
                             result.continuation,
                         )
                 }
