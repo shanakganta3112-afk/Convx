@@ -65,14 +65,20 @@ class ProbeActivity : Activity() {
 
         val tc = instance as? TrackClient
         val first = tracks.firstOrNull()
-        val streamable = first?.streamables?.firstOrNull()
-        if (tc != null && streamable != null) {
-            val media = tc.loadStreamableMedia(streamable, false)
-            val link = (media as? Streamable.Media.Server)?.sources?.firstOrNull()
-                ?.let { it as? Streamable.Source.Http }?.request?.url
-            Log.i("PROBE", "stream quality=${streamable.quality} url=${link?.take(70)}")
+        if (tc != null && first != null) {
+            val hydrated = tc.loadTrack(first, false)
+            Log.i("PROBE", "loadTrack hydrated streamables=${hydrated.streamables.size} artists=${hydrated.artists.map { a -> a.name }}")
+            val streamable = hydrated.streamables.firstOrNull()
+            if (streamable != null) {
+                val media = tc.loadStreamableMedia(streamable, false)
+                val link = (media as? Streamable.Media.Server)?.sources?.firstOrNull()
+                    ?.let { it as? Streamable.Source.Http }?.request?.url
+                Log.i("PROBE", "stream quality=${streamable.quality} url=${link?.take(80)}")
+            } else {
+                Log.i("PROBE", "stream skipped: hydrated track has no streamables")
+            }
         } else {
-            Log.i("PROBE", "stream skipped tc=${tc != null} streamable=${streamable != null}")
+            Log.i("PROBE", "stream skipped tc=${tc != null} track=${first != null}")
         }
     }
 }
