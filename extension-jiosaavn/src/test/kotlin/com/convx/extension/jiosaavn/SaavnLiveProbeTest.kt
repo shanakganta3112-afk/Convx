@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -40,6 +41,24 @@ class SaavnLiveProbeTest {
         }
     }
 
+    private fun str(obj: JsonObject, key: String): String =
+        (obj[key] as? JsonPrimitive)?.contentOrNull?.replace("\n", " ")?.take(70) ?: "<absent>"
+
+    /** Prints the actual values of the fields a detail page needs, not just the keys. */
+    private fun values(label: String, obj: JsonObject) {
+        val mi = obj["more_info"] as? JsonObject
+        println(
+            "VAL|$label|title='${str(obj, "title")}' name='${str(obj, "name")}' " +
+                "subtitle='${str(obj, "subtitle")}' header_desc='${str(obj, "header_desc")}' " +
+                "list_count='${str(obj, "list_count")}' year='${str(obj, "year")}' " +
+                "mi.text='${mi?.let { str(it, "text") } ?: "<absent>"}' " +
+                "mi.song_count='${mi?.let { str(it, "song_count") } ?: "<absent>"}' " +
+                "list=${(obj["list"] as? JsonArray)?.size ?: -1} " +
+                "topSongs=${(obj["topSongs"] as? JsonArray)?.size ?: -1} " +
+                "topAlbums=${(obj["topAlbums"] as? JsonArray)?.size ?: -1}"
+        )
+    }
+
     @Test fun `probe live api shapes and extension surface`() = runBlocking {
         assumeTrue("set SAAVN_LIVE=1 to run", System.getenv("SAAVN_LIVE") == "1")
         val query = System.getenv("SAAVN_QUERY") ?: "kesariya"
@@ -64,9 +83,18 @@ class SaavnLiveProbeTest {
             val albumResponse = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.album(albumId))
             println("PROBE|album detail|raw id=${albumResponse["id"]} requested=$albumId")
             dump("webapi.get album", albumResponse)
+            values("webapi.get album", albumResponse)
         }
-        if (artistId != null) dump("webapi.get artist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.artist(artistId)))
-        if (playlistId != null) dump("webapi.get playlist", api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.playlist(playlistId)))
+        if (artistId != null) {
+            val artistResponse = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.artist(artistId))
+            dump("webapi.get artist", artistResponse)
+            values("webapi.get artist", artistResponse)
+        }
+        if (playlistId != null) {
+            val playlistResponse = api.call(SaavnCalls.WEBAPI_GET, SaavnCalls.playlist(playlistId))
+            dump("webapi.get playlist", playlistResponse)
+            values("webapi.get playlist", playlistResponse)
+        }
 
         // Now drive the extension the way the app does, so the mapping is verified too.
         val extension = JioSaavnExtension()
