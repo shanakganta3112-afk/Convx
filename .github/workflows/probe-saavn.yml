@@ -1,0 +1,46 @@
+name: Probe JioSaavn API
+
+# Runs the extension's live probe against the real api.php endpoints and prints the
+# response shapes plus the extension's own results. This is the only way to answer
+# "does the JioSaavn extension work" without a device: the probe drives
+# search/album/artist/playlist/stream through the same code the app calls.
+#
+# Triggered on push because this token cannot dispatch workflows.
+
+on:
+  push:
+    branches:
+      - probe-saavn
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Live probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Probe the live API and drive the extension
+        env:
+          SAAVN_LIVE: "1"
+          SAAVN_QUERY: "kesariya"
+        run: |
+          ./gradlew :extension-jiosaavn:test --tests '*SaavnLiveProbeTest*' \
+            --console=plain --info
