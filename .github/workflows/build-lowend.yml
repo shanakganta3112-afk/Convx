@@ -107,16 +107,19 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs convx-arm64-lowend.apk
 
       - name: Inspect the APK
+        # No pipefail here: `sort | head` closes the pipe early and SIGPIPE would
+        # fail the step after the APK is already built and signed.
         run: |
-          set -euo pipefail
+          set -eu
           ls -l convx-arm64-lowend.apk
           sha256sum convx-arm64-lowend.apk
           echo "--- ABIs present ---"
           unzip -l convx-arm64-lowend.apk | grep -oE 'lib/[^/]+/' | sort -u
           echo "--- heaviest entries ---"
-          unzip -l convx-arm64-lowend.apk | sort -rn | head -8
+          unzip -l convx-arm64-lowend.apk | sort -rn | head -8 || true
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: convx-arm64-gms-release
