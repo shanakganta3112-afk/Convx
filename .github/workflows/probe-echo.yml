@@ -1,0 +1,60 @@
+name: Prove the Echo extension runs
+
+# Loads the released Echo Saavn extension outside Android and outside Echo: convert its
+# dex to a jar, load it against Echo's published contract, then drive quickSearch and
+# loadStreamableMedia through the same client interfaces Convx calls. This is the only
+# proof that the extension works that does not need a phone.
+
+on:
+  push:
+    branches:
+      - probe-echo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    name: Load and drive the eapk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Download the extension APK
+        run: |
+          curl -sL -o saavn.eapk \
+            "https://github.com/Abhishek890/Echo-Saavn-Extension/releases/download/vf933435/yt-f933435.eapk"
+          ls -l saavn.eapk
+          file saavn.eapk
+
+      - name: Convert its dex to a jar
+        run: |
+          curl -sL -o dex-tools.zip \
+            "https://github.com/pxb1988/dex2jar/releases/download/v2.4/dex-tools-v2.4.zip"
+          unzip -q dex-tools.zip
+          mkdir -p eapk
+          unzip -o -q saavn.eapk classes.dex -d eapk
+          chmod +x dex-tools-2.4/d2j-dex2jar.sh
+          ./dex-tools-2.4/d2j-dex2jar.sh -f -o saavn.jar eapk/classes.dex
+          ls -l saavn.jar
+
+      - name: Drive the extension
+        run: |
+          ./gradlew -p tools/echo-harness run \
+            --args="$(pwd)/saavn.jar kesariya" \
+            --console=plain --info
