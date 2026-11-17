@@ -363,7 +363,13 @@ dependencies {
     // extension APK link at runtime: the eapk references
     // dev.brahmkshatriya.echo.common.*, so those exact classes must be on the
     // classpath. Re-expressing them in our own package would not link.
-    implementation("dev.brahmkshatriya.echo:common:1.0.0")
+    implementation("dev.brahmkshatriya.echo:common:1.0.0") {
+        // Convx already ships protobuf-javalite; Echo's common pulls full
+        // protobuf-java and the two declare the same com.google.protobuf classes, so
+        // packaging fails on ~200 duplicates. The extension models this host touches
+        // (Track, Streamable, ImageHolder) do not use protobuf.
+        exclude(group = "com.google.protobuf", module = "protobuf-java")
+    }
     implementation(project(":extension-jiosaavn"))
 
 
