@@ -14,3 +14,11 @@ dependencies {
 }
 
 application { mainClass.set("harness.MainKt") }
+
+// dex2jar output does not always pass the JVM's bytecode verifier (VerifyError: Bad
+// type on operand stack) even though ART accepts the same dex. Skipping verification
+// lets the converted classes run; it is a harness-only concession and says nothing
+// about how the extension behaves on a device.
+tasks.named<JavaExec>("run") {
+    jvmArgs("-Xverify:none")
+}
