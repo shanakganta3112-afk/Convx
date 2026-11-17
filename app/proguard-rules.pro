@@ -192,3 +192,12 @@
 # smbj / mbassador reference desktop-only javax.el and Kerberos (GSS) classes that Android does not ship.
 -dontwarn javax.el.**
 -dontwarn org.ietf.jgss.**
+
+# Echo extension contract.
+#
+# The extension is a separate APK loaded at runtime with DexClassLoader. Its classes
+# reference dev.brahmkshatriya.echo.common.* by name, so R8 must not rename or strip
+# those classes: obfuscating them turns every extension load into a
+# NoClassDefFoundError that only shows up on a device, never at build time.
+-keep class dev.brahmkshatriya.echo.common.** { *; }
+-dontwarn dev.brahmkshatriya.echo.common.**
