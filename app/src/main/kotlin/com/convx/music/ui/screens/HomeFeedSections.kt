@@ -98,6 +98,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import com.convx.music.extensions.rememberProviderLabel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 internal fun LazyListScope.homeSectionsContent(
@@ -403,7 +404,7 @@ internal fun LazyListScope.accountPlaylistsSection(
     accountPlaylists?.takeIf { it.isNotEmpty() }?.let { accountPlaylists ->
         item(key = "account_playlists_title", contentType = "section_title") {
             NavigationTitle(
-                label = stringResource(R.string.your_youtube_playlists),
+                label = stringResource(R.string.your_provider_playlists, rememberProviderLabel()),
                 title = accountName,
                 thumbnail = {
                     if (url != null) {

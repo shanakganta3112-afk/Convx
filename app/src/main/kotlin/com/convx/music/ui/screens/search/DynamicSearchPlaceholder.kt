@@ -27,6 +27,7 @@ import com.convx.music.LocalDatabase
 import com.convx.music.R
 import com.convx.music.constants.SearchSource
 import kotlinx.coroutines.flow.first
+import com.convx.music.extensions.rememberProviderLabel
 
 @Composable
 fun DynamicSearchPlaceholder(
@@ -48,7 +49,7 @@ fun DynamicSearchPlaceholder(
     }
 
     val database = LocalDatabase.current.get()
-    val defaultPrompt = stringResource(R.string.search_yt_music)
+    val defaultPrompt = stringResource(R.string.search_provider_music, rememberProviderLabel())
     val promptWhatsOnMind = stringResource(R.string.search_prompt_whats_on_mind)
     val promptTodaysPick = stringResource(R.string.search_prompt_todays_pick)
     val promptTrending = stringResource(R.string.search_prompt_trending)

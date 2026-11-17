@@ -20,6 +20,7 @@ import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.models.filterYoutubeShorts
 import com.music.innertube.pages.SearchSummaryPage
 import com.convx.music.constants.HideExplicitKey
+import com.convx.music.constants.SaavnOnlyKey
 import com.convx.music.constants.HideVideoSongsKey
 import com.convx.music.constants.DataSaverEnabledKey
 import com.convx.music.constants.HideYoutubeShortsKey
@@ -64,6 +65,20 @@ constructor(
     }
 
     private suspend fun load(filter: SearchFilter?) {
+        // Kill switch: with YouTube off the app must not call it at all. The summaries
+        // row is a YouTube-only concept, so it stays empty rather than showing stale
+        // YouTube mixes next to a JioSaavn catalogue.
+        val saavnOnly = context.dataStore.get(SaavnOnlyKey, false)
+        if (saavnOnly) {
+            if (filter == null) {
+                summaryPage = null
+                return
+            }
+            if (viewStateMap[filter.value] != null) return
+            val items = extensionItems(filter).distinctBy { it.id }
+            viewStateMap[filter.value] = ItemsPage(items, null)
+            return
+        }
         if (filter == null) {
             if (summaryPage != null) return
             PageCaches.searchSummaries

@@ -144,6 +144,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.convx.music.extensions.rememberProviderLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -443,9 +444,10 @@ fun DynamicSearchPlaceholder(searchSource: SearchSource, style: TextStyle) {
     Text(
         text = stringResource(
             when (searchSource) {
-                SearchSource.ONLINE -> R.string.search_yt_music
+                SearchSource.ONLINE -> R.string.search_provider_music
                 SearchSource.LOCAL -> R.string.search_library
-            }
+            },
+            rememberProviderLabel(),
         ),
         style = style,
         maxLines = 1,
@@ -520,7 +522,7 @@ private fun SourceSwitch(
             .clip(CircleShape).background(thumb))
         Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         listOf(
-            SearchSource.ONLINE to stringResource(R.string.apple_search_catalog),
+            SearchSource.ONLINE to rememberProviderLabel(),
             SearchSource.LOCAL to stringResource(R.string.apple_search_library),
         ).forEach { (value, label) ->
             val selected = value == source

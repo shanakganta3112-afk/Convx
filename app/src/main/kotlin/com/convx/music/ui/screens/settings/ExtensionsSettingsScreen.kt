@@ -13,6 +13,7 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import com.convx.music.constants.SaavnOnlyKey
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -44,6 +45,10 @@ fun ExtensionsSettingsScreen(
     val (extensionsEnabled, onExtensionsEnabledChange) = rememberPreference(
         ExtensionEnabledKey,
         defaultValue = true,
+    )
+    val (saavnOnly, onSaavnOnlyChange) = rememberPreference(
+        SaavnOnlyKey,
+        defaultValue = false,
     )
 
     SettingsPage(
@@ -83,6 +88,27 @@ fun ExtensionsSettingsScreen(
                     onClick = { onExtensionsEnabledChange(!extensionsEnabled) },
                 )
             },
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // The kill switch. Turning it on stops YouTube from being queried and swaps the
+        // provider name in the interface; see ProviderSource and OnlineSearchViewModel.
+        IosSettingsGroup(
+            title = stringResource(R.string.saavn_only_group),
+            items = listOf(
+                IosSettingsItem(
+                    title = { Text(stringResource(R.string.saavn_only_title)) },
+                    description = { Text(stringResource(R.string.saavn_only_desc)) },
+                    trailingContent = {
+                        ModernSwitch(
+                            checked = saavnOnly,
+                            onCheckedChange = onSaavnOnlyChange,
+                        )
+                    },
+                    onClick = { onSaavnOnlyChange(!saavnOnly) },
+                )
+            ),
         )
 
         Spacer(modifier = Modifier.height(24.dp))

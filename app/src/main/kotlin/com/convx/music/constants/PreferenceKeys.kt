@@ -216,6 +216,12 @@ val ForceSelectedQualityKey = booleanPreferencesKey("forceSelectedQuality")
 // adds a catalogue to search and browse, so it should be a deliberate choice.
 val ExtensionEnabledKey = booleanPreferencesKey("enableExtensions")
 
+/**
+ * Kill switch: stop querying YouTube and serve the catalogue from JioSaavn only.
+ * Search, browse and the provider name in the interface all follow this flag.
+ */
+val SaavnOnlyKey = booleanPreferencesKey("saavnOnly")
+
 // Lossless (TIDAL via hifi-api). Opt-in, off by default. Streaming only for now.
 val EnableTidalStreamingKey = booleanPreferencesKey("enableTidalStreaming")
 val TidalQualityKey         = stringPreferencesKey("tidalQuality")
