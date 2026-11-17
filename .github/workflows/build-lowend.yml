@@ -1,15 +1,15 @@
 name: Low-end arm64 APK
 
-# Builds an arm64-only RELEASE APK on GitHub runners.
+# Builds an arm64-only RELEASE APK on GitHub runners and signs it explicitly.
 #
-# Two reasons this exists rather than reusing release.yml:
-#   1. arm64 is the ABI every current budget phone runs; the universal build
-#      also carries 30.6 MB of x86_64 libraries no phone can execute.
-#   2. This is a fork with no repository secrets, so it generates its own
-#      signing keystore. The result installs on a device that has no Convx
-#      installed, or after uninstalling the official build (different key).
+# Why not release.yml: arm64 is the ABI every current budget phone runs, and the
+# universal build also carries 30.6 MB of x86_64 libraries no phone can execute.
 #
-# Runs automatically on a push to this branch.
+# Why explicit signing: the Gradle release signingConfig is applied behind an
+# `if (file("keystore/release.keystore").exists())` check, and on the first run of
+# this workflow the keystore was created but the APK still came out unsigned. So
+# this job signs with apksigner afterwards and verifies the result, failing loudly
+# if the APK is not signed.
 
 on:
   push:
@@ -54,10 +54,7 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      # No repository secrets on a fork, so sign the release build with a
-      # throwaway key generated here. Same file and env names the Gradle
-      # release signingConfig already reads.
-      - name: Generate release keystore
+      - name: Generate signing keystore
         run: |
           mkdir -p app/keystore
           keytool -genkeypair -v \
@@ -78,21 +75,40 @@ jobs:
             --no-configuration-cache --console=plain --warning-mode summary \
             -x lint --stacktrace
 
+      - name: Sign the APK
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $BUILD_TOOLS"
+          APK=$(find app/build/outputs/apk/arm64Gms/release -name '*.apk' | head -1)
+          echo "unsigned input: $APK"
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$APK" aligned.apk
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks app/keystore/release.keystore \
+            --ks-pass pass:convxbuild \
+            --key-pass pass:convxbuild \
+            --ks-key-alias convx \
+            --v1-signing-enabled false \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out convx-arm64-lowend.apk aligned.apk
+          echo "--- verification ---"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs convx-arm64-lowend.apk
+
       - name: Inspect the APK
         run: |
-          APK=$(find app/build/outputs/apk/arm64Gms/release -name '*.apk' | head -1)
-          echo "APK: $APK"
-          ls -l "$APK"
-          sha256sum "$APK"
+          set -euo pipefail
+          ls -l convx-arm64-lowend.apk
+          sha256sum convx-arm64-lowend.apk
           echo "--- ABIs present ---"
-          unzip -l "$APK" | grep -E 'lib/[^/]+/' | awk '{print $4}' | cut -d/ -f2 | sort -u
+          unzip -l convx-arm64-lowend.apk | grep -oE 'lib/[^/]+/' | sort -u
           echo "--- heaviest entries ---"
-          unzip -l "$APK" | sort -rn | head -12
+          unzip -l convx-arm64-lowend.apk | sort -rn | head -8
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: convx-arm64-gms-release
-          path: app/build/outputs/apk/arm64Gms/release/*.apk
+          path: convx-arm64-lowend.apk
           if-no-files-found: error
           retention-days: 30
