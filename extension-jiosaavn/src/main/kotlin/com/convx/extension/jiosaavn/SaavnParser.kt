@@ -74,7 +74,9 @@ class SaavnParser {
             // Captured: song_count sits inside more_info on search results, and is
             // absent from the album detail root.
             trackCount = stringOf(obj, "song_count")?.toIntOrNull()
-                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull(),
+                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull()
+                // content.getAlbumDetails reports the track count as list_count.
+                ?: stringOf(obj, "list_count")?.toIntOrNull(),
         )
     }
 
@@ -107,7 +109,9 @@ class SaavnParser {
             // `more_info.song_count`.
             trackCount = stringOf(obj, "numsongs")?.toIntOrNull()
                 ?: stringOf(obj, "song_count")?.toIntOrNull()
-                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull(),
+                ?: stringOf(moreInfo ?: JsonObject(emptyMap()), "song_count")?.toIntOrNull()
+                // playlist.getDetails reports it as list_count.
+                ?: stringOf(obj, "list_count")?.toIntOrNull(),
         )
     }
 
