@@ -1,0 +1,98 @@
+name: Low-end arm64 APK
+
+# Builds an arm64-only RELEASE APK on GitHub runners.
+#
+# Two reasons this exists rather than reusing release.yml:
+#   1. arm64 is the ABI every current budget phone runs; the universal build
+#      also carries 30.6 MB of x86_64 libraries no phone can execute.
+#   2. This is a fork with no repository secrets, so it generates its own
+#      signing keystore. The result installs on a device that has no Convx
+#      installed, or after uninstalling the official build (different key).
+#
+# Runs automatically on a push to this branch.
+
+on:
+  push:
+    branches:
+      - lowend-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build_arm64:
+    name: Build arm64 GMS release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Generate debug.keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      # No repository secrets on a fork, so sign the release build with a
+      # throwaway key generated here. Same file and env names the Gradle
+      # release signingConfig already reads.
+      - name: Generate release keystore
+        run: |
+          mkdir -p app/keystore
+          keytool -genkeypair -v \
+            -keystore app/keystore/release.keystore \
+            -storepass convxbuild \
+            -alias convx \
+            -keypass convxbuild \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Convx Test Build,O=Convx,C=IN"
+
+      - name: Build arm64 GMS release APK
+        env:
+          STORE_PASSWORD: convxbuild
+          KEY_ALIAS: convx
+          KEY_PASSWORD: convxbuild
+        run: |
+          ./gradlew assembleArm64GmsRelease \
+            --no-configuration-cache --console=plain --warning-mode summary \
+            -x lint --stacktrace
+
+      - name: Inspect the APK
+        run: |
+          APK=$(find app/build/outputs/apk/arm64Gms/release -name '*.apk' | head -1)
+          echo "APK: $APK"
+          ls -l "$APK"
+          sha256sum "$APK"
+          echo "--- ABIs present ---"
+          unzip -l "$APK" | grep -E 'lib/[^/]+/' | awk '{print $4}' | cut -d/ -f2 | sort -u
+          echo "--- heaviest entries ---"
+          unzip -l "$APK" | sort -rn | head -12
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: convx-arm64-gms-release
+          path: app/build/outputs/apk/arm64Gms/release/*.apk
+          if-no-files-found: error
+          retention-days: 30

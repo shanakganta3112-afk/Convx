@@ -178,9 +178,16 @@ fun isLowRamDevice(): Boolean {
     }
 }
 
-/** Combines the API-level check with the low-RAM device check; use this to gate glass. */
+/**
+ * Combines the API-level check with the device tier; use this to gate glass.
+ *
+ * The previous check asked Android whether the device was low-RAM, which is true only on
+ * Android Go and roughly 2 GB hardware. The cost of this pipeline is GPU, not RAM, so a
+ * 4 GB phone with a weak GPU was never gated and ran the full glass stack. [DevicePerf]
+ * keys on RAM and core count, which reaches that class.
+ */
 @Composable
-fun isGlassAllowed(): Boolean = isGlassSupported() && !isLowRamDevice()
+fun isGlassAllowed(): Boolean = isGlassSupported() && rememberDeviceTier() != DeviceTier.LOW
 
 /** Maps the 0..2 vibrancy preference to a saturation multiplier. */
 fun glassSaturation(vibrancy: Float): Float = 1f + 0.5f * vibrancy.coerceIn(0f, 2f)
