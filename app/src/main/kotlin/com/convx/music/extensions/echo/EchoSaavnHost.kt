@@ -170,7 +170,7 @@ object EchoSaavnHost {
         return ExtensionSearchResult(tracks = found.map { it.toConvxTrack() })
     }
 
-    /** Walks the search feed: Feed -> default Tab -> PagedData -> Shelf.Tracks. */
+    /** Walks the search feed: Feed -> default Tab -> PagedData -> Shelf.Lists.Tracks. */
     private suspend fun feedSearch(
         context: Context,
         client: SearchFeedClient,
@@ -183,7 +183,7 @@ object EchoSaavnHost {
                 val shelves = page.pagedData.loadAll()
                 val shelfKinds = shelves.joinToString(",") { it::class.java.simpleName }
                 diag(context, "loadSearchFeed('$query') -> ${shelves.size} shelves [$shelfKinds]")
-                shelves.filterIsInstance<Shelf.Tracks>().flatMap { it.list }
+                shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
             }
         }.onFailure {
             reportException(it)
