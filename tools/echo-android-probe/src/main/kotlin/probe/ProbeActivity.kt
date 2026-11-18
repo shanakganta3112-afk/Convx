@@ -10,6 +10,9 @@ import dev.brahmkshatriya.echo.common.clients.SearchFeedClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
 import dev.brahmkshatriya.echo.common.models.Shelf
+import dev.brahmkshatriya.echo.common.models.Album
+import dev.brahmkshatriya.echo.common.models.Artist
+import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.runBlocking
@@ -65,6 +68,16 @@ class ProbeActivity : Activity() {
             val fromItems = shelves.filterIsInstance<Shelf.Lists.Items>()
                 .flatMap { it.list }.filterIsInstance<Track>()
             Log.i("PROBE", "fromTracks=${fromTracks.size} fromItems=${fromItems.size}")
+
+            // What is actually inside the Items shelves: the mix decides what can be mapped.
+            shelves.forEachIndexed { i, shelf ->
+                if (shelf is Shelf.Lists.Items) {
+                    val l = shelf.list
+                    Log.i("PROBE", "shelf[$i] '${shelf.title}' n=${l.size} " +
+                        "Track=${l.count { it is Track }} Album=${l.count { it is Album }} " +
+                        "Artist=${l.count { it is Artist }} Playlist=${l.count { it is Playlist }}")
+                }
+            }
             val feedTracks = (fromTracks + fromItems).distinctBy { it.id }
             Log.i("PROBE", "feedTracks=${feedTracks.size}")
             feedTracks.take(3).forEach {
