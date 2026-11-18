@@ -28,7 +28,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import android.util.Log
 import java.util.concurrent.TimeUnit
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -72,6 +71,26 @@ object EchoSaavnHost {
         .callTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    /**
+     * Diagnostics that survive a release build.
+     *
+     * Neither of the obvious channels works here: App.kt only plants a Timber tree under
+     * BuildConfig.DEBUG, and proguard-rules.pro strips android.util.Log with
+     * -assumenosideeffects, so a release APK logs nothing at all. A file in filesDir is
+     * not stripped, and println reaches logcat under System.out.
+     *
+     * Pull it with:
+     *   adb shell run-as com.convx.music cat files/echo-saavn.log
+     */
+    private fun diag(context: Context, message: String) {
+        println("EchoSaavn: $message")
+        runCatching {
+            val file = File(context.filesDir, "echo-saavn.log")
+            if (file.length() > 64 * 1024) file.delete()
+            file.appendText("${System.currentTimeMillis()}  $message\n")
+        }
+    }
+
     private val mutex = Mutex()
     private var client: ExtensionClient? = null
     private val tracks = ConcurrentHashMap<String, Track>()
@@ -82,7 +101,10 @@ object EchoSaavnHost {
         return mutex.withLock {
             client ?: withContext(Dispatchers.IO) {
                 runCatching { open(context) }
-                    .onFailure { reportException(it) }
+                    .onFailure {
+                        reportException(it)
+                        diag(context, "load failed: ${it::class.java.name}: ${it.message}")
+                    }
                     .getOrNull()
             }.also { client = it }
         }
@@ -91,16 +113,16 @@ object EchoSaavnHost {
     private fun open(context: Context): ExtensionClient {
         val apk = File(context.filesDir, APK_NAME)
         if (!apk.exists() || apk.length() < 1024L) {
-            Log.d(TAG, "downloading extension from $APK_URL")
+            diag(context, "downloading extension from $APK_URL")
             val bytes = http.newCall(Request.Builder().url(APK_URL).build())
                 .execute().use { response ->
                     if (!response.isSuccessful) error("extension download HTTP ${response.code}")
                     response.body?.bytes() ?: error("extension download returned no body")
                 }
             apk.writeBytes(bytes)
-            Log.d(TAG, "extension downloaded, ${bytes.size} bytes")
+            diag(context, "extension downloaded, ${bytes.size} bytes")
         } else {
-            Log.d(TAG, "extension already on disk, ${apk.length()} bytes")
+            diag(context, "extension already on disk, ${apk.length()} bytes")
         }
         @Suppress("DEPRECATION")
         val info = context.packageManager
@@ -116,7 +138,7 @@ object EchoSaavnHost {
         )
         // Echo does exactly this: no-arg constructor, cast to the client interface.
         val client = loader.loadClass(className).getConstructor().newInstance() as ExtensionClient
-        Log.d(TAG, "instantiated $className")
+        diag(context, "instantiated $className")
         return client
     }
 
@@ -133,16 +155,19 @@ object EchoSaavnHost {
     suspend fun search(context: Context, query: String): ExtensionSearchResult {
         if (query.isBlank()) return ExtensionSearchResult()
         val quick = load(context) as? QuickSearchClient ?: return ExtensionSearchResult()
-        Log.d(TAG, "quickSearch('$query')")
+        diag(context, "quickSearch('$query')")
         val items = withContext(Dispatchers.IO) {
             runCatching { withTimeoutOrNull(SEARCH_TIMEOUT_MS) { quick.quickSearch(query) } }
-                .onFailure { reportException(it) }
+                .onFailure {
+                    reportException(it)
+                    diag(context, "quickSearch failed: ${it::class.java.name}: ${it.message}")
+                }
                 .getOrNull()
         } ?: run {
-            Log.w(TAG, "quickSearch timed out or failed")
+            diag(context, "quickSearch timed out or failed")
             return ExtensionSearchResult()
         }
-        Log.d(TAG, "quickSearch returned ${items.size} items")
+        diag(context, "quickSearch returned ${items.size} items")
 
         val found = items
             .filterIsInstance<QuickSearchItem.Media>()
