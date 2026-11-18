@@ -53,7 +53,7 @@ class ProbeActivity : Activity() {
         val instance = loader.loadClass(className).getConstructor().newInstance()
         Log.i("PROBE", "instantiated=${instance.javaClass.name}")
 
-        // The real search: Feed -> default tab -> PagedData -> Shelf.Tracks.
+        // The real search: Feed -> default tab -> PagedData -> Shelf.Lists.Tracks.
         val sf = instance as? SearchFeedClient
         Log.i("PROBE", "implementsSearchFeed=${sf != null}")
         if (sf != null) {
@@ -61,7 +61,7 @@ class ProbeActivity : Activity() {
             val page = feed.getPagedData(null)
             val shelves = page.pagedData.loadAll()
             Log.i("PROBE", "loadSearchFeed shelves=${shelves.size} kinds=${shelves.map { it::class.java.simpleName }}")
-            val feedTracks = shelves.filterIsInstance<Shelf.Tracks>().flatMap { it.list }
+            val feedTracks = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
             Log.i("PROBE", "feedTracks=${feedTracks.size}")
             feedTracks.take(3).forEach {
                 Log.i("PROBE", "feedTrack '${it.title}' id=${it.id} streamables=${it.streamables.size}")
