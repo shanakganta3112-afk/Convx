@@ -183,7 +183,15 @@ object EchoSaavnHost {
                 val shelves = page.pagedData.loadAll()
                 val shelfKinds = shelves.joinToString(",") { it::class.java.simpleName }
                 diag(context, "loadSearchFeed('$query') -> ${shelves.size} shelves [$shelfKinds]")
-                shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
+                // The feed mixes shelf kinds. Tracks shelves carry Track directly; Items
+                // shelves carry EchoMediaItem, which is usually Track. Reading only one
+                // of the two is how a working search renders as "No results found".
+                val fromTracks = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
+                val fromItems = shelves.filterIsInstance<Shelf.Lists.Items>()
+                    .flatMap { it.list }
+                    .filterIsInstance<Track>()
+                diag(context, "tracks: ${fromTracks.size} from Tracks shelves, ${fromItems.size} from Items shelves")
+                (fromTracks + fromItems).distinctBy { it.id }
             }
         }.onFailure {
             reportException(it)
