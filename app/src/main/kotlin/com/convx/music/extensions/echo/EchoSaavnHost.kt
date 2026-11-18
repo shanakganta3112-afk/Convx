@@ -15,10 +15,12 @@ import com.convx.music.utils.reportException
 import dalvik.system.DexClassLoader
 import dev.brahmkshatriya.echo.common.clients.ExtensionClient
 import dev.brahmkshatriya.echo.common.clients.QuickSearchClient
+import dev.brahmkshatriya.echo.common.clients.SearchFeedClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.ImageHolder
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
+import dev.brahmkshatriya.echo.common.models.Shelf
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.Dispatchers
@@ -154,28 +156,58 @@ object EchoSaavnHost {
      */
     suspend fun search(context: Context, query: String): ExtensionSearchResult {
         if (query.isBlank()) return ExtensionSearchResult()
-        val quick = load(context) as? QuickSearchClient ?: return ExtensionSearchResult()
-        diag(context, "quickSearch('$query')")
-        val items = withContext(Dispatchers.IO) {
-            runCatching { withTimeoutOrNull(SEARCH_TIMEOUT_MS) { quick.quickSearch(query) } }
-                .onFailure {
-                    reportException(it)
-                    diag(context, "quickSearch failed: ${it::class.java.name}: ${it.message}")
-                }
-                .getOrNull()
-        } ?: run {
-            diag(context, "quickSearch timed out or failed")
-            return ExtensionSearchResult()
-        }
-        diag(context, "quickSearch returned ${items.size} items")
+        val client = load(context) ?: return ExtensionSearchResult()
 
-        val found = items
-            .filterIsInstance<QuickSearchItem.Media>()
-            .map { it.media }
-            .filterIsInstance<Track>()
+        // loadSearchFeed is the real search. quickSearch is only the suggestion list under
+        // the search bar ("a lightweight search that returns a list of items" per Echo's
+        // own KDoc), which is why using it produced "No results found" for real queries
+        // while the probe's suggestion query appeared to work.
+        val found = (client as? SearchFeedClient)?.let { feedSearch(context, it, query) }
+            ?: (client as? QuickSearchClient)?.let { quickSearch(context, it, query) }
+            ?: emptyList()
 
         found.forEach { tracks[it.id] = it }
         return ExtensionSearchResult(tracks = found.map { it.toConvxTrack() })
+    }
+
+    /** Walks the search feed: Feed -> default Tab -> PagedData -> Shelf.Tracks. */
+    private suspend fun feedSearch(
+        context: Context,
+        client: SearchFeedClient,
+        query: String,
+    ): List<Track> = withContext(Dispatchers.IO) {
+        runCatching {
+            withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
+                val feed = client.loadSearchFeed(query)
+                val page = feed.getPagedData(null)
+                val shelves = page.pagedData.loadAll()
+                val shelfKinds = shelves.joinToString(",") { it::class.java.simpleName }
+                diag(context, "loadSearchFeed('$query') -> ${shelves.size} shelves [$shelfKinds]")
+                shelves.filterIsInstance<Shelf.Tracks>().flatMap { it.list }
+            }
+        }.onFailure {
+            reportException(it)
+            diag(context, "loadSearchFeed failed: ${it::class.java.name}: ${it.message}")
+        }.getOrNull().orEmpty()
+    }
+
+    /** Suggestion list. Kept as a fallback for an extension with no feed client. */
+    private suspend fun quickSearch(
+        context: Context,
+        client: QuickSearchClient,
+        query: String,
+    ): List<Track> = withContext(Dispatchers.IO) {
+        runCatching {
+            withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
+                client.quickSearch(query)
+                    .filterIsInstance<QuickSearchItem.Media>()
+                    .map { it.media }
+                    .filterIsInstance<Track>()
+            }
+        }.onFailure {
+            reportException(it)
+            diag(context, "quickSearch failed: ${it::class.java.name}: ${it.message}")
+        }.getOrNull().orEmpty()
     }
 
     /**
