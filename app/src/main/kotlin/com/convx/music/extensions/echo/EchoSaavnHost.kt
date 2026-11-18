@@ -7,7 +7,10 @@ package com.convx.music.extensions.echo
 
 import android.content.Context
 import android.content.pm.PackageManager
+import com.convx.extension.api.ExtensionAlbum
+import com.convx.extension.api.ExtensionArtist
 import com.convx.extension.api.ExtensionArtistRef
+import com.convx.extension.api.ExtensionPlaylist
 import com.convx.extension.api.ExtensionSearchResult
 import com.convx.extension.api.ExtensionStream
 import com.convx.extension.api.ExtensionTrack
@@ -21,6 +24,9 @@ import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.ImageHolder
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
 import dev.brahmkshatriya.echo.common.models.Shelf
+import dev.brahmkshatriya.echo.common.models.Album
+import dev.brahmkshatriya.echo.common.models.Artist
+import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.Dispatchers
@@ -162,41 +168,62 @@ object EchoSaavnHost {
         // the search bar ("a lightweight search that returns a list of items" per Echo's
         // own KDoc), which is why using it produced "No results found" for real queries
         // while the probe's suggestion query appeared to work.
-        val found = (client as? SearchFeedClient)?.let { feedSearch(context, it, query) }
+        val result = (client as? SearchFeedClient)?.let { feedSearch(context, it, query) }
             ?: (client as? QuickSearchClient)?.let { quickSearch(context, it, query) }
-            ?: emptyList()
+            ?: ExtensionSearchResult()
 
-        found.forEach { tracks[it.id] = it }
-        return ExtensionSearchResult(tracks = found.map { it.toConvxTrack() })
+        // Cache the Track objects: the contract hands objects back, not ids.
+        cachedTracks.values.forEach { tracks[it.id] = it }
+        return result
     }
 
-    /** Walks the search feed: Feed -> default Tab -> PagedData -> Shelf.Lists.Tracks. */
+    /**
+     * Walks the search feed. Emulator capture, run 44265954271, query "Kesariya":
+     *
+     *   shelf[0] 'Songs'     n=10  Track=10
+     *   shelf[1] 'Albums'    n=10  Album=10
+     *   shelf[2] 'Artists'   n=10  Artist=10
+     *   shelf[3] 'Playlists' n=1   Playlist=1
+     *
+     * All four shelves arrive as Shelf.Lists.Items, so every kind has to be pulled out of
+     * the same list. Reading only one kind is how a working feed renders as no results.
+     */
     private suspend fun feedSearch(
         context: Context,
         client: SearchFeedClient,
         query: String,
-    ): List<Track> = withContext(Dispatchers.IO) {
+    ): ExtensionSearchResult = withContext(Dispatchers.IO) {
         runCatching {
             withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
                 val feed = client.loadSearchFeed(query)
-                val page = feed.getPagedData(null)
-                val shelves = page.pagedData.loadAll()
-                val shelfKinds = shelves.joinToString(",") { it::class.java.simpleName }
-                diag(context, "loadSearchFeed('$query') -> ${shelves.size} shelves [$shelfKinds]")
-                // The feed mixes shelf kinds. Tracks shelves carry Track directly; Items
-                // shelves carry EchoMediaItem, which is usually Track. Reading only one
-                // of the two is how a working search renders as "No results found".
-                val fromTracks = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
-                val fromItems = shelves.filterIsInstance<Shelf.Lists.Items>()
-                    .flatMap { it.list }
-                    .filterIsInstance<Track>()
-                diag(context, "tracks: ${fromTracks.size} from Tracks shelves, ${fromItems.size} from Items shelves")
-                (fromTracks + fromItems).distinctBy { it.id }
+                val shelves = feed.getPagedData(null).pagedData.loadAll()
+                val items = shelves.filterIsInstance<Shelf.Lists.Items>().flatMap { it.list }
+                val fromTrackShelves = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
+
+                val foundTracks = (items.filterIsInstance<Track>() + fromTrackShelves).distinctBy { it.id }
+                val foundAlbums = items.filterIsInstance<Album>().distinctBy { it.id }
+                val foundArtists = items.filterIsInstance<Artist>().distinctBy { it.id }
+                val foundPlaylists = items.filterIsInstance<Playlist>().distinctBy { it.id }
+
+                diag(
+                    context,
+                    "loadSearchFeed('$query') -> ${shelves.size} shelves; " +
+                        "tracks=${foundTracks.size} albums=${foundAlbums.size} " +
+                        "artists=${foundArtists.size} playlists=${foundPlaylists.size}",
+                )
+                cachedTracks = foundTracks.associateBy { it.id }
+
+                ExtensionSearchResult(
+                    tracks = foundTracks.map { it.toConvxTrack() },
+                    albums = foundAlbums.map { it.toConvxAlbum() },
+                    artists = foundArtists.map { it.toConvxArtist() },
+                    playlists = foundPlaylists.map { it.toConvxPlaylist() },
+                )
             }
         }.onFailure {
             reportException(it)
             diag(context, "loadSearchFeed failed: ${it::class.java.name}: ${it.message}")
-        }.getOrNull().orEmpty()
+        }.getOrNull() ?: ExtensionSearchResult()
     }
 
     /** Suggestion list. Kept as a fallback for an extension with no feed client. */
@@ -204,18 +231,20 @@ object EchoSaavnHost {
         context: Context,
         client: QuickSearchClient,
         query: String,
-    ): List<Track> = withContext(Dispatchers.IO) {
+    ): ExtensionSearchResult = withContext(Dispatchers.IO) {
         runCatching {
             withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
-                client.quickSearch(query)
+                val found = client.quickSearch(query)
                     .filterIsInstance<QuickSearchItem.Media>()
                     .map { it.media }
                     .filterIsInstance<Track>()
+                cachedTracks = found.associateBy { it.id }
+                ExtensionSearchResult(tracks = found.map { it.toConvxTrack() })
             }
         }.onFailure {
             reportException(it)
             diag(context, "quickSearch failed: ${it::class.java.name}: ${it.message}")
-        }.getOrNull().orEmpty()
+        }.getOrNull() ?: ExtensionSearchResult()
     }
 
     /**
@@ -248,6 +277,27 @@ object EchoSaavnHost {
     }
 
     private const val SEARCH_TIMEOUT_MS = 15_000L
+
+    @Volatile
+    private var cachedTracks: Map<String, Track> = emptyMap()
+
+    private fun Album.toConvxAlbum(): ExtensionAlbum = ExtensionAlbum(
+        id = id,
+        title = title,
+        cover = cover.url(),
+    )
+
+    private fun Artist.toConvxArtist(): ExtensionArtist = ExtensionArtist(
+        id = id,
+        title = name.ifBlank { title },
+        cover = cover.url(),
+    )
+
+    private fun Playlist.toConvxPlaylist(): ExtensionPlaylist = ExtensionPlaylist(
+        id = id,
+        title = title,
+        cover = cover.url(),
+    )
 
     private fun Track.toConvxTrack(): ExtensionTrack = ExtensionTrack(
         id = id,
