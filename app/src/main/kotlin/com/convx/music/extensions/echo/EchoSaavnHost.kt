@@ -24,9 +24,12 @@ import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.util.Log
+import java.util.concurrent.TimeUnit
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -52,6 +55,23 @@ object EchoSaavnHost {
     /** `meta-data` key Echo's own loader reads to find the entry class. */
     private const val META_CLASS = "class"
 
+    /**
+     * android.util.Log, not Timber: App.kt only plants a Timber tree when
+     * BuildConfig.DEBUG, so Timber output is invisible in the release APK — which is the
+     * only place this feature has ever failed.
+     */
+    private const val TAG = "EchoSaavn"
+
+    /**
+     * Explicit timeouts. The default client waits long enough that a blocked host looks
+     * like a hung screen; these make a dead network a fast, logged failure instead.
+     */
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private val mutex = Mutex()
     private var client: ExtensionClient? = null
     private val tracks = ConcurrentHashMap<String, Track>()
@@ -71,12 +91,16 @@ object EchoSaavnHost {
     private fun open(context: Context): ExtensionClient {
         val apk = File(context.filesDir, APK_NAME)
         if (!apk.exists() || apk.length() < 1024L) {
-            val bytes = OkHttpClient().newCall(Request.Builder().url(APK_URL).build())
+            Log.d(TAG, "downloading extension from $APK_URL")
+            val bytes = http.newCall(Request.Builder().url(APK_URL).build())
                 .execute().use { response ->
                     if (!response.isSuccessful) error("extension download HTTP ${response.code}")
                     response.body?.bytes() ?: error("extension download returned no body")
                 }
             apk.writeBytes(bytes)
+            Log.d(TAG, "extension downloaded, ${bytes.size} bytes")
+        } else {
+            Log.d(TAG, "extension already on disk, ${apk.length()} bytes")
         }
         @Suppress("DEPRECATION")
         val info = context.packageManager
@@ -91,7 +115,9 @@ object EchoSaavnHost {
             context.classLoader,
         )
         // Echo does exactly this: no-arg constructor, cast to the client interface.
-        return loader.loadClass(className).getConstructor().newInstance() as ExtensionClient
+        val client = loader.loadClass(className).getConstructor().newInstance() as ExtensionClient
+        Log.d(TAG, "instantiated $className")
+        return client
     }
 
     /** True once the extension has been downloaded and instantiated. */
@@ -107,11 +133,16 @@ object EchoSaavnHost {
     suspend fun search(context: Context, query: String): ExtensionSearchResult {
         if (query.isBlank()) return ExtensionSearchResult()
         val quick = load(context) as? QuickSearchClient ?: return ExtensionSearchResult()
+        Log.d(TAG, "quickSearch('$query')")
         val items = withContext(Dispatchers.IO) {
-            runCatching { quick.quickSearch(query) }
+            runCatching { withTimeoutOrNull(SEARCH_TIMEOUT_MS) { quick.quickSearch(query) } }
                 .onFailure { reportException(it) }
                 .getOrNull()
-        } ?: return ExtensionSearchResult()
+        } ?: run {
+            Log.w(TAG, "quickSearch timed out or failed")
+            return ExtensionSearchResult()
+        }
+        Log.d(TAG, "quickSearch returned ${items.size} items")
 
         val found = items
             .filterIsInstance<QuickSearchItem.Media>()
@@ -150,6 +181,8 @@ object EchoSaavnHost {
             }.onFailure { reportException(it) }.getOrNull()
         }
     }
+
+    private const val SEARCH_TIMEOUT_MS = 15_000L
 
     private fun Track.toConvxTrack(): ExtensionTrack = ExtensionTrack(
         id = id,

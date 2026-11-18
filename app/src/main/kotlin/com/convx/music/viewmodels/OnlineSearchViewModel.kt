@@ -38,6 +38,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URLDecoder
 import com.convx.music.utils.PageCaches
 import javax.inject.Inject
@@ -67,6 +68,14 @@ constructor(
         }
     }
 
+    private companion object {
+        /**
+         * Long enough for a first-run APK download plus one catalogue call, short enough
+         * that a dead provider costs the user seconds rather than a stuck screen.
+         */
+        const val EXTENSION_TIMEOUT_MS = 20_000L
+    }
+
     private suspend fun load(filter: SearchFilter?) {
         // Kill switch: with YouTube off the app must not call it at all. The summaries
         // row is a YouTube-only concept, so it stays empty rather than showing stale
@@ -74,11 +83,13 @@ constructor(
         val saavnOnly = context.dataStore.get(SaavnOnlyKey, false)
         if (saavnOnly) {
             if (filter == null) {
-                summaryPage = null
+                // Not null: the UI reads a null summary as "still loading", so leaving it
+                // null here is a spinner that never stops before the user types anything.
+                summaryPage = SearchSummaryPage(emptyList())
                 return
             }
             if (viewStateMap[filter.value] != null) return
-            val items = extensionItems(filter).distinctBy { it.id }
+            val items = extensionItemsOrEmpty(filter).distinctBy { it.id }
             viewStateMap[filter.value] = ItemsPage(items, null)
             return
         }
@@ -109,7 +120,7 @@ constructor(
                     // its results sit above the YouTube ones rather than below them.
                     // Ids are namespaced (`saavn:`), so distinctBy cannot drop either
                     // provider's copy of a song.
-                    val extension = extensionItems(filter)
+                    val extension = extensionItemsOrEmpty(filter)
                     val youtube = result.items
                         .distinctBy { it.id }
                         .filterExplicit(
@@ -150,6 +161,21 @@ constructor(
      * YouTube results use so the existing rows render them unchanged. Empty when the
      * extension is off, has nothing for this query, or fails.
      */
+    /**
+     * [extensionItems] with a deadline and a guard.
+     *
+     * The page's loading state is "no entry in viewStateMap", so anything that hangs or
+     * throws inside the extension leaves the user on a spinner that never stops — which
+     * is exactly what a first search does while the Echo APK downloads, or while the
+     * extension's own HTTP call waits on an unreachable host. A provider must never be
+     * able to hold the page open.
+     */
+    private suspend fun extensionItemsOrEmpty(filter: SearchFilter): List<YTItem> =
+        runCatching { withTimeoutOrNull(EXTENSION_TIMEOUT_MS) { extensionItems(filter) } }
+            .onFailure { reportException(it) }
+            .getOrNull()
+            .orEmpty()
+
     private suspend fun extensionItems(filter: SearchFilter): List<YTItem> {
         // The Echo extension is asked first when it is enabled. It reaches the same
         // JioSaavn ids, so falling back to the compiled-in client for the same query
