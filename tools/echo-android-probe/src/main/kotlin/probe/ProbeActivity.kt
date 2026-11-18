@@ -6,8 +6,10 @@ import android.os.Bundle
 import android.util.Log
 import dalvik.system.DexClassLoader
 import dev.brahmkshatriya.echo.common.clients.QuickSearchClient
+import dev.brahmkshatriya.echo.common.clients.SearchFeedClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
+import dev.brahmkshatriya.echo.common.models.Shelf
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.runBlocking
@@ -50,6 +52,21 @@ class ProbeActivity : Activity() {
         val loader = DexClassLoader(apk.absolutePath, codeCacheDir.absolutePath, null, classLoader)
         val instance = loader.loadClass(className).getConstructor().newInstance()
         Log.i("PROBE", "instantiated=${instance.javaClass.name}")
+
+        // The real search: Feed -> default tab -> PagedData -> Shelf.Tracks.
+        val sf = instance as? SearchFeedClient
+        Log.i("PROBE", "implementsSearchFeed=${sf != null}")
+        if (sf != null) {
+            val feed = sf.loadSearchFeed("kesariya")
+            val page = feed.getPagedData(null)
+            val shelves = page.pagedData.loadAll()
+            Log.i("PROBE", "loadSearchFeed shelves=${shelves.size} kinds=${shelves.map { it::class.java.simpleName }}")
+            val feedTracks = shelves.filterIsInstance<Shelf.Tracks>().flatMap { it.list }
+            Log.i("PROBE", "feedTracks=${feedTracks.size}")
+            feedTracks.take(3).forEach {
+                Log.i("PROBE", "feedTrack '${it.title}' id=${it.id} streamables=${it.streamables.size}")
+            }
+        }
 
         val quick = instance as? QuickSearchClient
         Log.i("PROBE", "implementsQuickSearch=${quick != null}")
