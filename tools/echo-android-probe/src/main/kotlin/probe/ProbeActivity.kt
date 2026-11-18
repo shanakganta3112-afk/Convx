@@ -61,7 +61,11 @@ class ProbeActivity : Activity() {
             val page = feed.getPagedData(null)
             val shelves = page.pagedData.loadAll()
             Log.i("PROBE", "loadSearchFeed shelves=${shelves.size} kinds=${shelves.map { it::class.java.simpleName }}")
-            val feedTracks = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
+            val fromTracks = shelves.filterIsInstance<Shelf.Lists.Tracks>().flatMap { it.list }
+            val fromItems = shelves.filterIsInstance<Shelf.Lists.Items>()
+                .flatMap { it.list }.filterIsInstance<Track>()
+            Log.i("PROBE", "fromTracks=${fromTracks.size} fromItems=${fromItems.size}")
+            val feedTracks = (fromTracks + fromItems).distinctBy { it.id }
             Log.i("PROBE", "feedTracks=${feedTracks.size}")
             feedTracks.take(3).forEach {
                 Log.i("PROBE", "feedTrack '${it.title}' id=${it.id} streamables=${it.streamables.size}")
